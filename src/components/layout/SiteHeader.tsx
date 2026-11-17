@@ -8,7 +8,7 @@ import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
-import { isApplePlatform } from '@/lib/platform'
+import { modKeyLabel } from '@/lib/platform'
 import { scrollToId, scrollToTop } from '@/lib/scroll'
 import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
@@ -23,7 +23,7 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuId = useId()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [modKey] = useState(() => (isApplePlatform() ? '⌘' : 'Ctrl'))
+  const [modKey] = useState(modKeyLabel)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
