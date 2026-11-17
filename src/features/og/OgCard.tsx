@@ -47,8 +47,8 @@ export default function OgCard() {
             {site.monogram}
           </span>
           <span className="font-mono text-[17px] text-fg-subtle">
-            <span className="text-signal">|</span> where Name has{' '}
-            <span className="text-sev-medium">"Alqadery"</span>
+            <span className="text-signal">|</span> where Name =={' '}
+            <span className="text-sev-medium">"Mohannad"</span>
           </span>
         </div>
         <p className="font-mono text-[17px] tracking-wide text-fg-muted">{certs}</p>

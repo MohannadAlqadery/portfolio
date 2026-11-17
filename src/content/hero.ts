@@ -15,9 +15,9 @@ export const heroQuery: QueryLine[] = [
     { kind: 'plain', text: ' ' },
     { kind: 'field', text: 'Name' },
     { kind: 'plain', text: ' ' },
-    { kind: 'operator', text: 'has' },
+    { kind: 'operator', text: '==' },
     { kind: 'plain', text: ' ' },
-    { kind: 'string', text: '"Alqadery"' },
+    { kind: 'string', text: '"Mohannad"' },
   ],
   [
     { kind: 'pipe', text: '| ' },
