@@ -83,7 +83,7 @@ export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMe
             href={site.links.linkedin}
             target="_blank"
             rel="noopener noreferrer"
-            className="label text-fg-muted hover:text-fg"
+            className="link-underline pb-0.5 label text-fg-muted hover:text-fg"
           >
             LinkedIn ↗
           </a>

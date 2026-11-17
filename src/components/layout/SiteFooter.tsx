@@ -12,7 +12,8 @@ function FooterHeading({ children }: { children: string }) {
   return <h2 className="mb-4 label text-fg-subtle">{children}</h2>
 }
 
-const linkClass = 'text-sm text-fg-muted transition-colors hover:text-fg'
+const linkClass =
+  'link-underline pb-0.5 text-sm text-fg-muted transition-[color,background-size] hover:text-fg'
 
 export function SiteFooter() {
   const [copied, setCopied] = useState(false)
