@@ -1,7 +1,7 @@
 import { Command } from 'cmdk'
 import { ArrowUp, AtSign, Copy, CornerDownLeft, Hash } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { GithubIcon, LinkedinIcon } from '@/components/icons/BrandIcons'
+import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Kbd } from '@/components/ui/Kbd'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
@@ -142,20 +142,6 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
             }
           >
             LinkedIn
-          </Item>
-        </Command.Group>
-
-        <Command.Group heading="Site" className={groupClass}>
-          <Item
-            value="view source"
-            keywords={['github', 'code', 'repo']}
-            icon={<GithubIcon />}
-            hint="↗"
-            onSelect={() =>
-              run(() => window.open(site.links.source, '_blank', 'noopener,noreferrer'))
-            }
-          >
-            View source on GitHub
           </Item>
         </Command.Group>
       </Command.List>

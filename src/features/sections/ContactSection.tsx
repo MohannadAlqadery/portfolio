@@ -21,7 +21,10 @@ function ChannelRow({
       <span className="min-w-0 font-display text-3xl break-words text-fg md:col-span-6 md:text-4xl">
         {value}
       </span>
-      <span className="flex flex-wrap gap-2 md:col-span-4 md:justify-end">{actions}</span>
+      {/* Phone: buttons share the full width equally. Desktop: right-aligned, natural width. */}
+      <span className="grid auto-cols-fr grid-flow-col gap-2 md:col-span-4 md:flex md:justify-end">
+        {actions}
+      </span>
     </li>
   )
 }
