@@ -132,6 +132,11 @@ export function SiteHeader() {
             </button>
           </div>
         </Container>
+        {/* Reading progress, driven purely by CSS scroll timeline. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 -bottom-px h-px scroll-progress bg-signal/70"
+        />
       </header>
 
       {/*

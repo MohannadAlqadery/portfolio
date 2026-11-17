@@ -34,7 +34,7 @@ export function Section({ id, title, intro, children, className }: SectionProps)
         >
           {intro}
         </SectionHeader>
-        {children ? <div className="mt-10 md:mt-14">{children}</div> : null}
+        {children ? <div className="mt-10 reveal md:mt-14">{children}</div> : null}
       </Container>
     </section>
   )

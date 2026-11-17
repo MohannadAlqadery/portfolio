@@ -1,6 +1,7 @@
 import { ArrowUpRight } from 'lucide-react'
 import { Section } from '@/components/layout/Section'
 import { credentials } from '@/content/credentials'
+import { trackSpotlight } from '@/lib/spotlight'
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
@@ -21,7 +22,10 @@ export function CredentialsSection() {
       <ul className="grid gap-4 md:grid-cols-3">
         {featured.map((credential, i) => (
           <li key={credential.code}>
-            <article className="group flex h-full min-h-60 flex-col rounded-md border border-line bg-surface p-5 transition-colors hover:border-line-strong">
+            <article
+              onPointerMove={trackSpotlight}
+              className="group spotlight flex h-full min-h-60 flex-col rounded-md border border-line bg-surface p-5 transition-colors hover:border-line-strong"
+            >
               <p className="flex items-center justify-between label text-fg-subtle">
                 <span>
                   EVD-{pad(i + 1)} · {credential.issuer}

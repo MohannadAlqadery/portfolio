@@ -24,7 +24,7 @@ export function Hero() {
 
       <Container className="flex min-h-[calc(100svh-3.5rem)] flex-col justify-center gap-12 py-12 md:gap-16 md:py-16">
         <div>
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 label text-fg-subtle">
+          <p className="flex rise-in flex-wrap items-center gap-x-3 gap-y-1 label text-fg-subtle">
             <span>{site.location.coordinates}</span>
             <span aria-hidden="true">/</span>
             <span>
@@ -32,12 +32,15 @@ export function Hero() {
             </span>
           </p>
           <h1 id="hero-title" className="mt-5 font-display text-display text-fg">
-            {firstName} <em className="text-fg-muted">{rest.join(' ')}</em>
+            <span className="inline-block rise-in [animation-delay:80ms]">{firstName}</span>{' '}
+            <em className="inline-block rise-in text-fg-muted [animation-delay:200ms]">
+              {rest.join(' ')}
+            </em>
           </h1>
         </div>
 
         <div className="grid gap-10 lg:grid-cols-12 lg:items-end lg:gap-12">
-          <div className="space-y-8 lg:col-span-5">
+          <div className="rise-in space-y-8 [animation-delay:380ms] lg:col-span-5">
             <p className="inline-flex items-center gap-2 rounded-sm border border-line bg-surface/60 px-2.5 py-1.5 label text-fg-muted">
               <StatusDot pulse />
               {hero.status}
@@ -64,7 +67,11 @@ export function Hero() {
             </div>
           </div>
 
-          <QueryConsole query={heroQuery} result={heroResult} className="lg:col-span-7" />
+          <QueryConsole
+            query={heroQuery}
+            result={heroResult}
+            className="rise-in [animation-delay:520ms] lg:col-span-7"
+          />
         </div>
       </Container>
     </section>
