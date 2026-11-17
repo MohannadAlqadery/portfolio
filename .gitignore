@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Lighthouse CI
+lhci/
+.lighthouseci/
+
 # Local agent / tooling config
 .claude/
 

@@ -23,5 +23,11 @@
     ],
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
-  "ignorePatterns": ["dist", "node_modules", "coverage"]
+  "overrides": [
+    {
+      "files": ["e2e/**/*.ts"],
+      "rules": { "react/rules-of-hooks": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist", "node_modules", "coverage", "test-results", "playwright-report"]
 }
