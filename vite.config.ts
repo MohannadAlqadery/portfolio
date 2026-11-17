@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import { fontPreload } from './build/font-preload.ts'
 import { seo } from './build/seo.ts'
 
 const readJson = <T>(path: string): T =>
@@ -43,7 +44,17 @@ const buildDate = new Date()
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), seo({ siteUrl, buildDate })],
+  plugins: [
+    react(),
+    tailwindcss(),
+    seo({ siteUrl, buildDate }),
+    // Hero name (serif, both styles) and body text are above the fold.
+    fontPreload([
+      /instrument-serif-latin-400-normal-.*\.woff2$/,
+      /instrument-serif-latin-400-italic-.*\.woff2$/,
+      /geist-latin-wght-normal-.*\.woff2$/,
+    ]),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

@@ -37,7 +37,16 @@ export function Chip({
       )}
       {...props}
     >
-      {dot ? <span aria-hidden="true" className="size-1.5 rounded-full bg-current" /> : null}
+      {dot ? (
+        <span
+          aria-hidden="true"
+          // Green "signal" dots blink like a live LED; severity dots stay steady.
+          className={cn(
+            'size-1.5 rounded-full bg-current',
+            variant === 'signal' && 'animate-blink',
+          )}
+        />
+      ) : null}
       {children}
     </span>
   )
