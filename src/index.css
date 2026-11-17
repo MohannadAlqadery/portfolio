@@ -1,0 +1,20 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens are introduced in Phase 2 (design system).
+ * Phase 1 only proves the Tailwind pipeline works.
+ */
+@theme {
+  --color-ink-950: #0b0d0c;
+  --color-ink-100: #edefea;
+  --color-signal: #7bd389;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-ink-100);
+}
