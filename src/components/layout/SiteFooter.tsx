@@ -110,6 +110,9 @@ export function SiteFooter() {
               Set in Instrument Serif, Geist and Geist Mono. Built with React, TypeScript and
               Tailwind.
             </p>
+            <a href="/.well-known/security.txt" className={`${linkClass} mt-3 inline-block`}>
+              security.txt
+            </a>
           </div>
         </div>
 
