@@ -1,6 +1,8 @@
 /**
  * Skills laid out like an ATT&CK matrix: each column is a "tactic", each cell a "technique".
- * `level: 'basics'` mirrors the resume's own "(Basics)" markers.
+ * `level: 'basics'` marks skills that are still early-stage.
+ * The detection, network/host, IR/forensics and threat-intel columns draw on the
+ * Hack The Box CDSA (Certified Defensive Security Analyst) job-role path.
  */
 export type ToolkitItem = { name: string; level?: 'basics' }
 export type ToolkitColumn = { id: string; title: string; items: ToolkitItem[] }
@@ -11,10 +13,9 @@ export const toolkit: ToolkitColumn[] = [
     title: 'Security operations',
     items: [
       { name: 'Alert triage' },
-      { name: 'Incident response' },
       { name: 'Log analysis' },
       { name: 'Phishing analysis' },
-      { name: 'Threat intel enrichment' },
+      { name: 'Playbook escalation' },
       { name: 'Vulnerability assessment' },
       { name: 'Case documentation' },
     ],
@@ -27,6 +28,7 @@ export const toolkit: ToolkitColumn[] = [
       { name: 'Defender XDR' },
       { name: 'Defender for Endpoint' },
       { name: 'Splunk' },
+      { name: 'Elastic Stack' },
     ],
   },
   {
@@ -35,18 +37,56 @@ export const toolkit: ToolkitColumn[] = [
     items: [
       { name: 'KQL' },
       { name: 'Splunk SPL' },
-      { name: 'Bash', level: 'basics' },
+      { name: 'Bash' },
       { name: 'Python', level: 'basics' },
     ],
   },
   {
-    id: 'investigation',
-    title: 'Investigation',
+    id: 'network-host',
+    title: 'Network and host analysis',
     items: [
       { name: 'Wireshark' },
+      { name: 'tcpdump' },
+      { name: 'Zeek' },
+      { name: 'Windows Event Logs' },
+      { name: 'Sysmon' },
       { name: 'VirusTotal' },
       { name: 'AbuseIPDB' },
-      { name: 'Windows Event Logs' },
+    ],
+  },
+  {
+    id: 'detection',
+    title: 'Detection and hunting',
+    items: [
+      { name: 'Threat hunting' },
+      { name: 'Suricata' },
+      { name: 'Snort' },
+      { name: 'AD attack detection' },
+      { name: 'Sigma rules', level: 'basics' },
+      { name: 'YARA rules', level: 'basics' },
+    ],
+  },
+  {
+    id: 'ir-forensics',
+    title: 'Incident response and forensics',
+    items: [
+      { name: 'Incident handling' },
+      { name: 'Evidence collection' },
+      { name: 'Memory forensics (Volatility)' },
+      { name: 'Velociraptor' },
+      { name: 'KAPE' },
+    ],
+  },
+  {
+    id: 'intel',
+    title: 'Threat intel and frameworks',
+    items: [
+      { name: 'IOC enrichment' },
+      { name: 'MITRE ATT&CK' },
+      { name: 'Cyber Kill Chain' },
+      { name: 'Pyramid of Pain' },
+      { name: 'NIST CSF' },
+      { name: 'NIST IR lifecycle' },
     ],
   },
   {
@@ -61,10 +101,5 @@ export const toolkit: ToolkitColumn[] = [
       { name: 'Privilege escalation' },
       { name: 'Pivoting' },
     ],
-  },
-  {
-    id: 'frameworks',
-    title: 'Frameworks',
-    items: [{ name: 'MITRE ATT&CK' }, { name: 'NIST CSF' }, { name: 'NIST IR lifecycle' }],
   },
 ]

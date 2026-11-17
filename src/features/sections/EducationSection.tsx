@@ -28,6 +28,7 @@ export function EducationSection() {
           <p className="mt-3 text-fg-muted">
             {education.school} · {education.location}
           </p>
+          <p className="mt-4 text-sm leading-relaxed text-fg-muted">{education.summary}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <Chip variant="signal" dot>
               Graduated
@@ -40,9 +41,15 @@ export function EducationSection() {
           <h3 className="mb-4 label text-fg-subtle">Coursework</h3>
           <ol className="border-t border-line">
             {education.coursework.map((course, i) => (
-              <li key={course} className="flex items-baseline gap-4 border-b border-line py-3.5">
+              <li
+                key={course.name}
+                className="grid grid-cols-[2rem_1fr] items-baseline gap-x-2 border-b border-line py-4"
+              >
                 <span className="label text-fg-subtle">{pad(i + 1)}</span>
-                <span className="text-lg text-fg">{course}</span>
+                <span className="text-lg text-fg">{course.name}</span>
+                <span className="col-start-2 mt-1 text-sm leading-relaxed text-fg-muted">
+                  {course.detail}
+                </span>
               </li>
             ))}
           </ol>
