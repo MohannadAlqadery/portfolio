@@ -17,7 +17,8 @@
   --color-line-strong: #2f3531;
   --color-fg: #edefea;
   --color-fg-muted: #a3aaa2;
-  --color-fg-subtle: #7a827a;
+  /* ≥ 4.5:1 on every surface, including `raised` (WCAG AA). */
+  --color-fg-subtle: #818981;
 
   /* Accent */
   --color-signal: #7bd389;

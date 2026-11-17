@@ -75,7 +75,7 @@ describe('Command palette', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: 'Open command palette' }))
+    await user.click(screen.getByRole('button', { name: /command palette$/i }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
 })

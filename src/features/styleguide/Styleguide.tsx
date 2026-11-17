@@ -19,7 +19,7 @@ const swatchGroups: { name: string; swatches: { token: string; hex: string }[] }
       { token: 'raised', hex: '#161A17' },
       { token: 'line', hex: '#222724' },
       { token: 'line-strong', hex: '#2F3531' },
-      { token: 'fg-subtle', hex: '#7A827A' },
+      { token: 'fg-subtle', hex: '#818981' },
       { token: 'fg-muted', hex: '#A3AAA2' },
       { token: 'fg', hex: '#EDEFEA' },
     ],

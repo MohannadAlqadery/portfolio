@@ -106,14 +106,18 @@ export function SiteHeader() {
               type="button"
               onClick={() => setPaletteOpen(true)}
               className="flex h-8 items-center gap-1.5 rounded-sm border border-line px-2 text-fg-subtle transition-colors hover:border-line-strong hover:text-fg"
-              aria-label="Open command palette"
               aria-keyshortcuts="Control+K Meta+K"
             >
+              {/*
+                Named by its content, starting with the visible shortcut ("Ctrl K command palette"),
+                so voice-control users can activate it by saying what they see.
+              */}
               <CommandIcon aria-hidden="true" className="size-3.5 sm:hidden" />
-              <span aria-hidden="true" className="hidden items-center gap-1 sm:flex">
-                <Kbd className="border-0 bg-transparent px-0">{modKey}</Kbd>
+              <span className="hidden items-center gap-1 sm:flex">
+                <Kbd className="border-0 bg-transparent px-0">{modKey}</Kbd>{' '}
                 <Kbd className="border-0 bg-transparent px-0">K</Kbd>
               </span>
+              <span className="sr-only"> command palette</span>
             </button>
             <button
               ref={menuButtonRef}
