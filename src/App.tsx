@@ -1,5 +1,10 @@
 import { lazy, Suspense } from 'react'
+import { SiteFooter } from '@/components/layout/SiteFooter'
+import { SiteHeader } from '@/components/layout/SiteHeader'
+import { SkipLink } from '@/components/layout/SkipLink'
+import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
 import { useHash } from '@/hooks/useHash'
+import { HomePage } from '@/pages/HomePage'
 
 // Internal design reference, loaded on demand so it never weighs on the main bundle.
 const Styleguide = lazy(() => import('@/features/styleguide/Styleguide'))
@@ -7,22 +12,23 @@ const Styleguide = lazy(() => import('@/features/styleguide/Styleguide'))
 export default function App() {
   const hash = useHash()
 
-  if (hash === '#styleguide') {
-    return (
-      <Suspense fallback={null}>
-        <Styleguide />
-      </Suspense>
-    )
-  }
-
   return (
-    <main className="grid min-h-dvh place-items-center px-4 font-mono text-sm">
-      <p>
-        <span aria-hidden="true" className="text-signal">
-          ●{' '}
-        </span>
-        Mohannad Alqadery — site under construction
-      </p>
-    </main>
+    <CommandPaletteProvider>
+      {hash === '#styleguide' ? (
+        <Suspense fallback={null}>
+          <Styleguide />
+        </Suspense>
+      ) : (
+        <>
+          <SkipLink targetId="main" />
+          <div id="top" />
+          <SiteHeader />
+          <main id="main" tabIndex={-1} className="outline-none">
+            <HomePage />
+          </main>
+          <SiteFooter />
+        </>
+      )}
+    </CommandPaletteProvider>
   )
 }
