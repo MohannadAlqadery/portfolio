@@ -64,6 +64,13 @@ describe('content integrity', () => {
     expect(new Set(items).size).toBe(items.length)
   })
 
+  it('self-hosts badges and keeps credential dates ordered', () => {
+    const withBadge = credentials.filter((c) => c.badge)
+    expect(withBadge.every((c) => c.badge?.src.startsWith('/badges/'))).toBe(true)
+    const dated = credentials.filter((c) => c.issued && c.expires)
+    expect(dated.every((c) => (c.issued ?? '') < (c.expires ?? ''))).toBe(true)
+  })
+
   it('only links credentials to https URLs', () => {
     const urls = credentials.flatMap((c) => (c.verifyUrl ? [c.verifyUrl] : []))
     expect(urls.every((url) => url.startsWith('https://'))).toBe(true)
