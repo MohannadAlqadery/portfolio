@@ -1,8 +1,8 @@
 /**
  * Skills laid out like an ATT&CK matrix: each column is a "tactic", each cell a "technique".
+ * Title Case on purpose, matching how MITRE ATT&CK writes tactics and techniques
+ * (short conjunctions like "and" stay lowercase; tool names keep their official spelling).
  * `level: 'basics'` marks skills that are still early-stage.
- * The detection, network/host, IR/forensics and threat-intel columns draw on the
- * Hack The Box CDSA (Certified Defensive Security Analyst) job-role path.
  */
 export type ToolkitItem = { name: string; level?: 'basics' }
 export type ToolkitColumn = { id: string; title: string; items: ToolkitItem[] }
@@ -10,14 +10,14 @@ export type ToolkitColumn = { id: string; title: string; items: ToolkitItem[] }
 export const toolkit: ToolkitColumn[] = [
   {
     id: 'operations',
-    title: 'Security operations',
+    title: 'Security Operations',
     items: [
-      { name: 'Alert triage' },
-      { name: 'Log analysis' },
-      { name: 'Phishing analysis' },
-      { name: 'Playbook escalation' },
-      { name: 'Vulnerability assessment' },
-      { name: 'Case documentation' },
+      { name: 'Alert Triage' },
+      { name: 'Log Analysis' },
+      { name: 'Phishing Analysis' },
+      { name: 'Playbook Escalation' },
+      { name: 'Vulnerability Assessment' },
+      { name: 'Case Documentation' },
     ],
   },
   {
@@ -33,7 +33,7 @@ export const toolkit: ToolkitColumn[] = [
   },
   {
     id: 'query',
-    title: 'Query and scripting',
+    title: 'Query and Scripting',
     items: [
       { name: 'KQL' },
       { name: 'Splunk SPL' },
@@ -43,7 +43,7 @@ export const toolkit: ToolkitColumn[] = [
   },
   {
     id: 'network-host',
-    title: 'Network and host analysis',
+    title: 'Network and Host Analysis',
     items: [
       { name: 'Wireshark' },
       { name: 'tcpdump' },
@@ -55,30 +55,30 @@ export const toolkit: ToolkitColumn[] = [
   },
   {
     id: 'detection',
-    title: 'Detection and hunting',
+    title: 'Detection and Hunting',
     items: [
-      { name: 'Threat hunting' },
+      { name: 'Threat Hunting' },
       { name: 'Suricata' },
       { name: 'Snort' },
-      { name: 'AD attack detection' },
-      { name: 'Sigma rules', level: 'basics' },
-      { name: 'YARA rules', level: 'basics' },
+      { name: 'AD Attack Detection' },
+      { name: 'Sigma Rules', level: 'basics' },
+      { name: 'YARA Rules', level: 'basics' },
     ],
   },
   {
     id: 'ir-forensics',
-    title: 'Incident response and forensics',
+    title: 'Incident Response and Forensics',
     items: [
-      { name: 'Incident handling' },
-      { name: 'Evidence collection' },
-      { name: 'Memory forensics (Volatility)' },
+      { name: 'Incident Handling' },
+      { name: 'Evidence Collection' },
+      { name: 'Memory Forensics (Volatility)' },
     ],
   },
   {
     id: 'intel',
-    title: 'Threat intel and frameworks',
+    title: 'Threat Intel and Frameworks',
     items: [
-      { name: 'IOC enrichment' },
+      { name: 'IOC Enrichment' },
       { name: 'MITRE ATT&CK' },
       { name: 'Cyber Kill Chain' },
       { name: 'NIST CSF' },
@@ -86,14 +86,14 @@ export const toolkit: ToolkitColumn[] = [
   },
   {
     id: 'offensive',
-    title: 'Penetration testing',
+    title: 'Penetration Testing',
     items: [
       { name: 'Nmap' },
       { name: 'Metasploit' },
       { name: 'Burp Suite' },
       { name: 'Gobuster' },
       { name: 'Enumeration' },
-      { name: 'Privilege escalation' },
+      { name: 'Privilege Escalation' },
       { name: 'Pivoting' },
     ],
   },
