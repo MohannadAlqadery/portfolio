@@ -6,6 +6,11 @@ export type NoteFrontmatter = {
   /** `YYYY-MM-DD` */
   date: string
   tags: string[]
+  /**
+   * Position in the notes list and the Previous / Next sequence (1 = first). Matches the order
+   * of the Credentials section: SC-200, eJPTv2, eSOC.
+   */
+  order: number
   /** Optional certification the note relates to, e.g. "SC-200". */
   cert?: string
   draft?: boolean
@@ -30,22 +35,25 @@ function slugFromPath(path: string): string {
   )
 }
 
-/** All publishable notes, newest first. Drafts only appear in development. */
+/** All publishable notes in their explicit `order`. Drafts only appear in development. */
 export const notes: Note[] = Object.entries(modules)
   .map(([path, mod]) => ({ ...mod.frontmatter, slug: slugFromPath(path), Content: mod.default }))
   .filter((note) => import.meta.env.DEV || !note.draft)
-  .sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title))
+  .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
 
 export function findNote(slug: string): Note | undefined {
   return notes.find((note) => note.slug === slug)
 }
 
-/** Previous (older) and next (newer) neighbours in the newest-first list. */
-export function neighbours(slug: string): { older: Note | undefined; newer: Note | undefined } {
+/** The notes before and after `slug` in reading order ("← Previous" / "Next →"). */
+export function neighbours(slug: string): { previous: Note | undefined; next: Note | undefined } {
   const index = notes.findIndex((note) => note.slug === slug)
-  if (index === -1) return { older: undefined, newer: undefined }
-  return { newer: notes[index - 1], older: notes[index + 1] }
+  if (index === -1) return { previous: undefined, next: undefined }
+  return { previous: notes[index - 1], next: notes[index + 1] }
 }
+
+/** Number of certifications covered by the notes. */
+export const certCount = new Set(notes.flatMap((note) => (note.cert ? [note.cert] : []))).size
 
 export const allTags: string[] = [...new Set(notes.flatMap((note) => note.tags))].sort((a, b) =>
   a.localeCompare(b),

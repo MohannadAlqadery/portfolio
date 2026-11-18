@@ -41,6 +41,28 @@ test.describe('field notes', () => {
     await expect(page.getByRole('button', { name: 'Copy' }).first()).toBeVisible()
   })
 
+  test('list and Previous / Next follow the Credentials order', async ({ page }) => {
+    await page.goto('/notes')
+    await expect(page.getByText('Field notes · 3 certifications')).toBeVisible()
+    const titles = page.getByRole('list', { name: 'Notes' }).getByRole('listitem').getByRole('link')
+    await expect(titles.nth(0)).toContainText('SC-200')
+    await expect(titles.nth(1)).toContainText('eJPTv2')
+    await expect(titles.nth(2)).toContainText('eSOC')
+
+    const more = page.getByRole('navigation', { name: 'More notes' })
+    await page.goto('/notes/sc-200')
+    await expect(more.getByRole('link')).toHaveCount(1)
+    await expect(more.getByRole('link', { name: /Next.*eJPTv2/ })).toBeVisible()
+
+    await page.goto('/notes/ejptv2')
+    await expect(more.getByRole('link', { name: /Previous.*SC-200/ })).toBeVisible()
+    await expect(more.getByRole('link', { name: /Next.*eSOC/ })).toBeVisible()
+
+    await page.goto('/notes/esoc')
+    await expect(more.getByRole('link')).toHaveCount(1)
+    await expect(more.getByRole('link', { name: /Previous.*eJPTv2/ })).toBeVisible()
+  })
+
   test('"On this page" jumps to a section', async ({ page, isMobile }) => {
     await page.goto('/notes/ejptv2')
     if (isMobile) {

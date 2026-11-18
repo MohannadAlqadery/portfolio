@@ -11,17 +11,19 @@ import { formatDay, NOT_FOUND_TITLE, noteTitle } from './meta'
 import { TocDisclosure, TocSidebar } from './NoteToc'
 import { findNote, neighbours, notePath, type Note } from './notes'
 
-function NeighbourLink({ note, direction }: { note: Note; direction: 'older' | 'newer' }) {
-  const Icon = direction === 'older' ? ArrowLeft : ArrowRight
+/** "← Previous" sits on the left, "Next →" on the right (always the right column, even alone). */
+function NeighbourLink({ note, direction }: { note: Note; direction: 'previous' | 'next' }) {
+  const isNext = direction === 'next'
   return (
     <Link
       to={notePath(note.slug)}
-      className={`group flex flex-col gap-2 rounded-md border border-line p-5 transition-colors hover:border-line-strong ${direction === 'newer' ? 'sm:items-end sm:text-right' : ''}`}
+      rel={isNext ? 'next' : 'prev'}
+      className={`group flex flex-col gap-2 rounded-md border border-line p-5 transition-colors hover:border-line-strong ${isNext ? 'sm:col-start-2 sm:items-end sm:text-right' : ''}`}
     >
       <span className="inline-flex items-center gap-1.5 label text-fg-subtle">
-        {direction === 'older' ? <Icon aria-hidden="true" className="size-3" /> : null}
-        {direction === 'older' ? 'Previous note' : 'Next note'}
-        {direction === 'newer' ? <Icon aria-hidden="true" className="size-3" /> : null}
+        {isNext ? null : <ArrowLeft aria-hidden="true" className="size-3" />}
+        {isNext ? 'Next' : 'Previous'}
+        {isNext ? <ArrowRight aria-hidden="true" className="size-3" /> : null}
       </span>
       <span className="font-display text-xl leading-snug text-fg transition-colors group-hover:text-signal-strong">
         {note.title}
@@ -39,7 +41,7 @@ export default function NotePage({ slug }: { slug: string }) {
   if (!note) return <NotFoundPage />
 
   const { Content } = note
-  const { older, newer } = neighbours(slug)
+  const { previous, next } = neighbours(slug)
 
   return (
     <article className="pt-12 pb-24 md:pt-20">
@@ -84,13 +86,13 @@ export default function NotePage({ slug }: { slug: string }) {
             <Content components={mdxComponents} />
           </div>
 
-          {older || newer ? (
+          {previous || next ? (
             <nav
               aria-label="More notes"
               className="mt-16 grid gap-4 border-t border-line pt-10 sm:grid-cols-2"
             >
-              {older ? <NeighbourLink note={older} direction="older" /> : <span />}
-              {newer ? <NeighbourLink note={newer} direction="newer" /> : null}
+              {previous ? <NeighbourLink note={previous} direction="previous" /> : null}
+              {next ? <NeighbourLink note={next} direction="next" /> : null}
             </nav>
           ) : null}
         </div>

@@ -29,6 +29,16 @@ describe('slugify', () => {
 })
 
 describe('notes', () => {
+  it('follows the Credentials order, so eJPTv2 is followed by eSOC', () => {
+    expect(notes.map((n) => n.cert)).toEqual(['SC-200', 'eJPTv2', 'eSOC'])
+    expect(neighbours('sc-200')).toMatchObject({ previous: undefined, next: { slug: 'ejptv2' } })
+    expect(neighbours('ejptv2')).toMatchObject({
+      previous: { slug: 'sc-200' },
+      next: { slug: 'esoc' },
+    })
+    expect(neighbours('esoc')).toMatchObject({ previous: { slug: 'ejptv2' }, next: undefined })
+  })
+
   it('has exactly one page per earned certification', () => {
     expect(notes.map((n) => n.cert).sort()).toEqual(['SC-200', 'eJPTv2', 'eSOC'].sort())
   })
@@ -69,7 +79,7 @@ describe('notes', () => {
     if (!first) throw new Error('no notes')
     expect(findNote(first.slug)?.title).toBe(first.title)
     expect(findNote('missing')).toBeUndefined()
-    expect(neighbours(first.slug).newer).toBeUndefined()
+    expect(neighbours(first.slug).previous).toBeUndefined()
   })
 
   it('never publishes contact details', () => {

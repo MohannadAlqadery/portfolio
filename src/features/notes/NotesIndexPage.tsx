@@ -6,7 +6,7 @@ import { Link } from '@/components/ui/Link'
 import { useDocumentMeta } from '@/hooks/useDocumentMeta'
 import { cn } from '@/lib/cn'
 import { formatDay, NOTES_DESCRIPTION, NOTES_TITLE } from './meta'
-import { allTags, notePath, notes } from './notes'
+import { allTags, certCount, notePath, notes } from './notes'
 
 export default function NotesIndexPage() {
   const [tag, setTag] = useState<string | null>(null)
@@ -17,9 +17,9 @@ export default function NotesIndexPage() {
   return (
     <Container className="pt-16 pb-24 md:pt-24">
       <header className="max-w-3xl">
+        {/* Plain count, deliberately not in the green "01 / 06" style used for homepage sections. */}
         <p className="label text-fg-subtle">
-          <span className="text-signal">{notes.length.toString().padStart(2, '0')}</span> notes ·
-          written up from the field
+          Field notes · {certCount} {certCount === 1 ? 'certification' : 'certifications'}
         </p>
         <h1 className="mt-5 font-display text-display text-fg">
           Field <em className="text-fg-muted">notes</em>
