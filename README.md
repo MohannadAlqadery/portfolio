@@ -2,6 +2,8 @@
 
 Personal site of **Mohannad Alqadery**, SOC analyst based in Abu Dhabi.
 
+**Live:** https://mohannad-alqadery.vercel.app
+
 Built with React, TypeScript, Vite and Tailwind CSS. See [`docs/PLAN.md`](docs/PLAN.md) for the design
 direction, information architecture and delivery phases.
 
@@ -47,6 +49,16 @@ Every pull request runs three jobs:
 - The contact email is assembled at runtime and only shown on request; no phone number is published.
 - [`/.well-known/security.txt`](https://securitytxt.org/) is generated at build time with a rolling
   one-year expiry.
+
+## Deployment
+
+Hosted on [Vercel](https://vercel.com) (project `mohannad-alqadery`), connected to this repository:
+
+- **Production**: every merge to `main` deploys to https://mohannad-alqadery.vercel.app.
+- **Previews**: every pull request gets its own preview URL, posted as a check on the PR.
+- Build settings and security headers come from [`vercel.json`](vercel.json); nothing is configured
+  only in the dashboard.
+- The local `.vercel/` link folder and `.env*` files (short-lived Vercel token) are git-ignored.
 
 ## Configuration
 
