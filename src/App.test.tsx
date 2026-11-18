@@ -21,7 +21,7 @@ describe('App shell', () => {
     for (const section of sections) {
       expect(within(nav).getByRole('link', { name: new RegExp(section.label) })).toHaveAttribute(
         'href',
-        `#${section.id}`,
+        `/#${section.id}`,
       )
       expect(document.getElementById(section.id)).toBeInTheDocument()
     }
