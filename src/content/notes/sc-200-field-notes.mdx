@@ -1,0 +1,107 @@
+---
+title: 'SC-200 field notes: learn KQL first, the portals second'
+description: "What Microsoft's Security Operations Analyst exam covers, the KQL worth knowing cold, and the Sentinel and Defender ideas that trip people up."
+date: '2026-11-18'
+tags: [SC-200, KQL, Microsoft Sentinel, Defender XDR]
+cert: SC-200
+---
+
+SC-200 is the exam behind Microsoft Certified: Security Operations Analyst Associate. I passed it in September 2026. These are the notes I'd want if I were starting again: what it covers, where the weight is, and the KQL that's worth knowing without looking it up.
+
+Nothing here is from the exam itself. Microsoft exams are under NDA, so this is all from the public skills outline, the documentation, and practice.
+
+## What it covers
+
+The skills outline has three areas:
+
+- **Manage a security operations environment.** Setting up Microsoft Sentinel and Defender XDR: data connectors, analytics rules, automation, and the settings that decide what turns into an incident.
+- **Respond to security incidents.** Investigating and remediating across Defender XDR, Defender for Cloud and Sentinel.
+- **Perform threat hunting.** Hunting with KQL, saving evidence as bookmarks, and turning a good hunt into a detection.
+
+Microsoft revises the outline a few times a year, so read the current study guide on Microsoft Learn before you book. The pass mark is 700 out of 1000, and the certification renews every year through a free online assessment that opens six months before it expires.
+
+## The stack in one paragraph
+
+Defender XDR is where alerts from endpoints, identities, email and cloud apps get correlated into incidents. Sentinel is the SIEM: it collects logs from everything else, runs your analytics rules and automates the response. Both speak KQL, with one difference that catches everyone: in Defender advanced hunting the time column is `Timestamp`, in Sentinel's own tables it's `TimeGenerated`. When a query you copied returns nothing, check that first.
+
+## KQL worth knowing cold
+
+A short list covers most of what you'll write:
+
+| Operator | What it's for |
+| --- | --- |
+| `where`, `project`, `extend` | Filter rows, pick columns, add calculated columns |
+| `summarize ... by` | Group and count: `count()`, `dcount()`, `make_set()`, `arg_max()` |
+| `bin()` | Bucket timestamps, e.g. `bin(TimeGenerated, 1h)` |
+| `join` | Combine tables; know `inner` versus `leftouter` |
+| `let` | Name a value or sub-query so the main query stays readable |
+| `has` vs `contains` | `has` matches whole terms and is fast; `contains` matches any substring |
+
+### Password spraying versus brute force
+
+Same table, same failure code, opposite shape. Spraying is many accounts with a few attempts each from one source:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == "50126" // invalid username or password
+| summarize Attempts = count(), Accounts = dcount(UserPrincipalName) by IPAddress
+| where Accounts >= 10
+| order by Accounts desc
+```
+
+Brute force is one account taking a beating. Group by the account instead:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == "50126"
+| summarize Attempts = count() by UserPrincipalName, IPAddress
+| where Attempts > 30
+```
+
+### Encoded PowerShell
+
+Base64-encoded commands are a classic way to hide what a script does. This is the Defender advanced hunting version, so the time column is `Timestamp`:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine matches regex @"(?i)\s-(e|enc|encodedcommand)\s"
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine
+```
+
+Look at `InitiatingProcessFileName`. PowerShell launched by Word or Excel deserves a lot more attention than PowerShell launched by an admin's terminal.
+
+### Latest state per entity
+
+`arg_max` returns the most recent row for each group, which is what you want for "what does this device look like now":
+
+```kql
+DeviceInfo
+| summarize arg_max(Timestamp, OSPlatform, OSVersion, PublicIP) by DeviceName
+```
+
+## Sentinel ideas that trip people up
+
+- **Analytics rule types.** Scheduled rules run a KQL query on an interval. NRT (near-real-time) rules run every minute with some limits. Microsoft Security rules create incidents from alerts other Microsoft products already raised.
+- **Entity mapping.** Map accounts, hosts and IPs inside each rule. Without it, incidents don't connect to each other and the investigation graph is mostly empty.
+- **Automation rules versus playbooks.** Automation rules are lightweight triage: assign an owner, change severity, add tags, close known noise, or call a playbook. Playbooks are Logic Apps for real workflows like enrichment, notifications or isolating a device.
+- **Watchlists.** Small CSV lookups such as VIP users or approved admin IPs, used in queries with `_GetWatchlist('name')`.
+
+## The Defender XDR side
+
+- **Alerts and incidents** are not the same thing. An incident groups related alerts across endpoint, identity, email and cloud apps, and that's the level you investigate at.
+- **Automated investigation and response** can remediate on its own. The Action center shows what it did and what's waiting for approval.
+- **Device response actions**: isolate the device, restrict app execution, run an antivirus scan, collect an investigation package, or open a live response session.
+- **Defender for Cloud** has two halves people blur together: recommendations (posture, what's misconfigured) and security alerts (threats, what's happening).
+
+## How I'd study it
+
+1. Work through the free SC-200 learning path on Microsoft Learn, in order.
+2. Write KQL against real-looking data early. The Log Analytics demo environment at [aka.ms/LADemo](https://aka.ms/LADemo) lets you query without building anything.
+3. Build a small Sentinel workspace on an Azure free account, connect a couple of sources and write one analytics rule end to end. Watch the cost settings.
+4. Take Microsoft's free practice assessment for SC-200 on Learn, and read the explanations for the ones you get right as well.
+
+What I'd skip: memorising where every setting lives in the portal. Menus move. KQL doesn't.

