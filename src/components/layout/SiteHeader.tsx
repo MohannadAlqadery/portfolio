@@ -6,6 +6,7 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
+import { useHideOnScroll } from '@/hooks/useHideOnScroll'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
@@ -27,6 +28,7 @@ export function SiteHeader() {
   const modKey = useModKey()
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
+  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
@@ -48,12 +50,27 @@ export function SiteHeader() {
 
   return (
     <>
+      {/*
+        Solid strip behind the status bar / Dynamic Island. Page content never shows through it,
+        even while the header below is slid away. Zero height on devices without a top inset.
+      */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-canvas xl:hidden"
+      />
+      {/* Reading progress, driven purely by CSS scroll timeline; sits just below the status bar. */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal/80"
+      />
       <header
+        onFocusCapture={revealHeader}
         className={cn(
           // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
-          // Phones and tablets always get a solid bar (cleaner under Safari's toolbars and the island);
-          // only wide screens start transparent over the hero.
-          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-colors duration-300',
+          // Phones and tablets: solid bar that slides away while reading and returns on scroll up.
+          // Wide screens: always visible, transparent over the hero until scrolled.
+          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-[transform,background-color,border-color] duration-300 ease-out',
+          headerHidden && 'max-xl:-translate-y-full',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
@@ -169,11 +186,6 @@ export function SiteHeader() {
             </button>
           </div>
         </Container>
-        {/* Reading progress, driven purely by CSS scroll timeline. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 -bottom-px h-px scroll-progress bg-signal/70"
-        />
       </header>
 
       {/*
