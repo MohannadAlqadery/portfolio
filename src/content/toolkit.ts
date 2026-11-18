@@ -51,7 +51,6 @@ export const toolkit: ToolkitColumn[] = [
       { name: 'Windows Event Logs' },
       { name: 'Sysmon' },
       { name: 'VirusTotal' },
-      { name: 'AbuseIPDB' },
     ],
   },
   {
@@ -73,8 +72,6 @@ export const toolkit: ToolkitColumn[] = [
       { name: 'Incident handling' },
       { name: 'Evidence collection' },
       { name: 'Memory forensics (Volatility)' },
-      { name: 'Velociraptor' },
-      { name: 'KAPE' },
     ],
   },
   {
@@ -84,9 +81,7 @@ export const toolkit: ToolkitColumn[] = [
       { name: 'IOC enrichment' },
       { name: 'MITRE ATT&CK' },
       { name: 'Cyber Kill Chain' },
-      { name: 'Pyramid of Pain' },
       { name: 'NIST CSF' },
-      { name: 'NIST IR lifecycle' },
     ],
   },
   {

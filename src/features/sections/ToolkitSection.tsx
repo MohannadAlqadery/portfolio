@@ -13,7 +13,7 @@ export function ToolkitSection() {
           The <em className="text-fg-muted">matrix</em>
         </>
       }
-      intro={`${totalItems} techniques across ${toolkit.length} tactics, laid out the way ATT&CK lays out an adversary. Built on the job, through INE and Microsoft, and the Hack The Box CDSA path.`}
+      intro={`${totalItems} techniques across ${toolkit.length} tactics, laid out the way ATT&CK lays out an adversary. Built through day-to-day SOC work, industry certifications and hands-on lab training.`}
     >
       {/* 8 tactics: 2 per row on phones and tablets, 4 per row from lg, so rows are always full. */}
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">

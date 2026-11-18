@@ -1,5 +1,5 @@
 export const education = {
-  degree: 'BA in Cybersecurity and Cloud Computing',
+  degree: 'B.Sc. in Cybersecurity and Cloud Computing',
   school: 'Applied Sciences University',
   location: 'Amman, Jordan',
   start: '2022-02',

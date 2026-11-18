@@ -17,7 +17,7 @@ function personJsonLd(siteUrl: string): string {
     name: site.name,
     url: `${siteUrl}/`,
     jobTitle: site.role,
-    worksFor: { '@type': 'Organization', name: 'Reach Digital' },
+    worksFor: { '@type': 'Organization', name: 'REACH Digital' },
     address: {
       '@type': 'PostalAddress',
       addressLocality: site.location.city,

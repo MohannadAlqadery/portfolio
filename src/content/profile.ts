@@ -1,6 +1,6 @@
 export const profile = {
   paragraphs: [
-    'I’m a SOC L1 analyst at Reach Digital in Abu Dhabi. Most days that means triaging alerts, deciding what is a true positive and what is not, and following suspicious activity across SIEM and endpoint telemetry until it is either closed or escalated to L2 with a clean write-up.',
+    'I’m a SOC L1 analyst at REACH Digital in Abu Dhabi. Most days that means triaging alerts, deciding what is a true positive and what is not, and following suspicious activity across SIEM and endpoint telemetry until it is either closed or escalated to L2 with a clean write-up.',
     'Before security operations I spent two years in compliance and quality assurance, reviewing files against policy and national regulations and handling sensitive personal data under strict procedures. Reading carefully, documenting everything and escalating early are habits that carried straight over to the SOC.',
     'On the blue-team side I hold Microsoft’s SC-200 (Security Operations Analyst Associate) and INE Security’s eSOC, and I’ve completed Hack The Box’s CDSA job-role path. INE’s eJPTv2 covers the attacker’s view, which makes it easier to judge what an alert actually means. Next I’m working toward advanced SOC and incident response work.',
   ],

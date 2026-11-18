@@ -31,7 +31,7 @@ export const credentials: Credential[] = [
   },
   {
     code: 'eJPTv2',
-    name: 'eLearnSecurity Junior Penetration Tester',
+    name: 'Junior Penetration Tester',
     issuer: 'INE Security',
     year: 2026,
     featured: true,
@@ -62,7 +62,7 @@ export const credentials: Credential[] = [
   },
   {
     code: 'Cisco',
-    name: 'Network Support and Security · Networking Basics',
+    name: 'Network Support and Security',
     issuer: 'Cisco',
     year: 2024,
     featured: false,
