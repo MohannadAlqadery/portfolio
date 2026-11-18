@@ -270,6 +270,25 @@
 }
 
 /* ------------------------------------------------------------------------------------------------
+ * Code highlighting
+ * Shiki emits `var(--shiki-*)` at build time (css-variables theme); the palette lives here so code
+ * matches the hero console: keywords signal-green, strings amber, comments subtle.
+ * --------------------------------------------------------------------------------------------- */
+:root {
+  --shiki-foreground: var(--color-fg-muted);
+  --shiki-background: transparent;
+  --shiki-token-keyword: var(--color-signal);
+  --shiki-token-string: var(--color-sev-medium);
+  --shiki-token-string-expression: var(--color-sev-medium);
+  --shiki-token-comment: var(--color-fg-subtle);
+  --shiki-token-constant: var(--color-sev-low);
+  --shiki-token-function: var(--color-fg);
+  --shiki-token-parameter: var(--color-fg);
+  --shiki-token-punctuation: var(--color-fg-subtle);
+  --shiki-token-link: var(--color-signal);
+}
+
+/* ------------------------------------------------------------------------------------------------
  * Base
  * --------------------------------------------------------------------------------------------- */
 @layer base {

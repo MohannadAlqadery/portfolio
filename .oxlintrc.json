@@ -29,5 +29,12 @@
       "rules": { "react/rules-of-hooks": "off" }
     }
   ],
-  "ignorePatterns": ["dist", "node_modules", "coverage", "test-results", "playwright-report"]
+  "ignorePatterns": [
+    "dist",
+    "dist-ssr",
+    "node_modules",
+    "coverage",
+    "test-results",
+    "playwright-report"
+  ]
 }
