@@ -67,18 +67,18 @@ All content lives in typed files under `src/content/` so it can be edited withou
 
 ## 6. Phases
 
-| Phase | Scope                                                                       | Done when                                 |
-| ----- | --------------------------------------------------------------------------- | ----------------------------------------- |
-| 0     | Install Node, Git, gh; create GitHub repo                                   | `gh auth status` OK, empty repo pushed    |
-| 1     | Scaffold + tooling + CI                                                     | CI green on `main`                        |
-| 2     | Design tokens, fonts, base primitives (Section, Chip, Rule, Kbd…)           | Style sheet page renders all primitives   |
-| 3     | Layout shell: nav, footer, section scaffold, command palette                | Navigable skeleton on mobile and desktop  |
-| 4     | Hero with KQL console                                                       | Animation works, reduced-motion fallback  |
-| 5     | Content sections (profile, cases, credentials, toolkit, education, contact) | All resume content represented            |
-| 6     | Motion and polish                                                           | Design review with Mohannad               |
-| 7     | Quality: a11y, perf, SEO/OG image, security headers, security.txt           | Lighthouse ≥ 95 all categories, axe clean |
-| 8     | Deploy to Vercel (+ custom domain if wanted)                                | Live URL                                  |
-| 9     | (Later) Field notes with MDX                                                | First real write-up published             |
+| Phase | Scope                                                                       | Done when                                  |
+| ----- | --------------------------------------------------------------------------- | ------------------------------------------ |
+| 0     | Install Node, Git, gh; create GitHub repo                                   | `gh auth status` OK, empty repo pushed     |
+| 1     | Scaffold + tooling + CI                                                     | CI green on `main`                         |
+| 2     | Design tokens, fonts, base primitives (Section, Chip, Rule, Kbd…)           | Style sheet page renders all primitives    |
+| 3     | Layout shell: nav, footer, section scaffold, command palette                | Navigable skeleton on mobile and desktop   |
+| 4     | Hero with KQL console                                                       | Animation works, reduced-motion fallback   |
+| 5     | Content sections (profile, cases, credentials, toolkit, education, contact) | All resume content represented             |
+| 6     | Motion and polish                                                           | Design review with Mohannad                |
+| 7     | Quality: a11y, perf, SEO/OG image, security headers, security.txt           | Lighthouse ≥ 95 all categories, axe clean  |
+| 8     | Deploy to Vercel (+ custom domain if wanted)                                | Live: https://mohannad-alqadery.vercel.app |
+| 9     | (Later) Field notes with MDX                                                | First real write-up published              |
 
 ## 7. Conventions
 
