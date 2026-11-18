@@ -1,10 +1,11 @@
-import { ArrowUp, Check, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowUp, Check, Mail } from 'lucide-react'
 import { useState, type MouseEvent, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Container } from '@/components/ui/Container'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { cn } from '@/lib/cn'
+import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail } from '@/lib/email'
 import { scrollToId, scrollToTop } from '@/lib/scroll'
 
@@ -114,20 +115,19 @@ export function SiteFooter() {
                   {copied ? 'Email address copied to clipboard' : ''}
                 </output>
               </li>
-              <li>
-                <a href="/.well-known/security.txt" className={linkClass}>
-                  <IconSlot>
-                    <ShieldCheck />
-                  </IconSlot>
-                  security.txt
-                </a>
-              </li>
             </ul>
           </div>
         </div>
 
-        {/* Phone: [© · back to top] / build. Desktop: © | build | back to top. */}
-        <div className="mt-14 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3">
+        {/*
+          Phone: [© · back to top] / updated. Desktop: © | updated | back to top.
+          Version and build SHA stay out of sight but are inspectable on the element.
+        */}
+        <div
+          data-version={__APP_VERSION__}
+          data-build={__BUILD_SHA__}
+          className="mt-14 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3"
+        >
           <p className="md:order-1">
             © {__BUILD_DATE__.slice(0, 4)} {site.name}
           </p>
@@ -144,8 +144,8 @@ export function SiteFooter() {
               <ArrowUp className="size-3.5" />
             </span>
           </button>
-          <p className="col-span-2 tabular-nums md:order-2 md:col-span-1 md:text-center">
-            v{__APP_VERSION__} · build {__BUILD_SHA__} · {__BUILD_DATE__}
+          <p className="col-span-2 md:order-2 md:col-span-1 md:text-center">
+            Updated <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
           </p>
         </div>
       </Container>
