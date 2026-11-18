@@ -1,14 +1,14 @@
 ---
-title: 'eJPT field notes: method beats exploits'
-description: "INE's Junior Penetration Tester is a hands-on exam. The method, the commands worth keeping close, and what each step looks like from the SOC side."
+title: 'eJPTv2 field notes: method beats exploits'
+description: "INE's Junior Penetration Tester (eJPTv2) is a hands-on exam. The method, the commands worth keeping close, and what each step looks like from the SOC side."
 date: '2026-11-18'
-tags: [eJPT, Penetration Testing, Nmap, Metasploit]
+tags: [eJPTv2, Penetration Testing, Nmap, Metasploit]
 cert: eJPTv2
 ---
 
-eJPT is INE's entry-level penetration testing certification. The exam is practical: you get a lab network in the browser and answer questions from what you find in it. I passed in June 2026.
+eJPTv2 is INE's entry-level penetration testing certification, and the exam is practical: you get a lab network in the browser and answer questions from what you find in it. I passed in June 2026.
 
-I work on the blue team, so the most useful thing it gave me wasn't a list of exploits. It was knowing what the other side of an alert looks like, which makes it much easier to judge whether something in a SIEM is a scan, a real attack or an admin having a bad day.
+I'm a blue-team analyst, so I'll be honest about why I took it. I didn't want to become a pentester. I wanted to stop guessing what the other side of an alert looks like. When a SIEM shows a burst of failed logons or a server suddenly talking to half the subnet, it helps a lot to have done the attacker's version of that yourself, in a lab, on purpose.
 
 These notes stick to the public exam objectives. Check INE's exam page for the current format and duration before you book.
 
@@ -23,15 +23,27 @@ INE lists four areas:
 
 ## The method
 
-Every host goes through the same loop: discover it, enumerate everything it runs, get in, look around, then see what it can reach that you couldn't. Write things down as you go. A lot of questions hinge on a detail you saw hours earlier and didn't think mattered.
+Every host goes through the same loop: find it, enumerate everything it runs, get in, look around, then see what it can reach that you couldn't. It's boring on purpose. When you're tired, a loop you trust is worth more than any clever trick.
 
-A simple table per network goes a long way:
+My rule of thumb: enumeration is never finished, it's just paused. If you're stuck, the answer is almost always in something you scanned too quickly an hour ago.
+
+### Take notes like someone else has to read them
+
+Write things down as you go. A lot of questions hinge on a detail you saw hours earlier and didn't think mattered. A simple table per network goes a long way:
 
 | Host | Open ports | Services and versions | Credentials | Notes |
 | --- | --- | --- | --- | --- |
 | 10.10.10.5 | 22, 80, 445 | OpenSSH 8.2, Apache 2.4.41, Samba | admin from web config | Can reach 172.16.5.0/24 |
 
+And keep a running log underneath it: time, what you tried, what happened. Failed attempts are worth writing down too, so you don't try the same thing three times.
+
+### Time
+
+Long, open-book exams reward pacing more than speed. Take breaks. Read every question before you start, because some of them tell you exactly where to look next.
+
 ## Commands worth keeping close
+
+These are the standard tools from the course. Run them against your own lab or the exam environment only.
 
 ### Discovery
 
@@ -44,6 +56,8 @@ nmap -p- --min-rate 1000 -T4 10.10.10.5 -oN ports.txt
 nmap -sV -sC -p 22,80,445 10.10.10.5 -oN services.txt
 ```
 
+Two scans, not one. The fast sweep tells you where to look; the slower version scan tells you what's actually there. Save everything with `-oN`, because you'll want it again.
+
 ### SMB and web
 
 ```bash
@@ -55,28 +69,34 @@ enum4linux -a 10.10.10.5
 gobuster dir -u http://10.10.10.5 -w /usr/share/wordlists/dirb/common.txt -x php,txt
 ```
 
+On web apps, read the page source and anything that looks like a config or backup file before reaching for tools. A surprising amount is sitting in plain sight.
+
 ### Credentials
 
-Only after enumeration gives you a likely username. Spraying blindly is slow and noisy.
+Only after enumeration gives you a likely username. Guessing blindly is slow and loud.
 
 ```bash
 hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.10.10.5 -t 4
 ```
 
-### Metasploit
+### Metasploit, the boring way
+
+The habit worth building is reading before running: what the module does, what it needs, and whether the target is likely to be affected.
 
 ```bash
 msfconsole -q
-search type:exploit name:smb
-use exploit/windows/smb/ms17_010_eternalblue
+search <service or CVE>
+info <module>
+show options
 set RHOSTS 10.10.10.5
-set LHOST 10.10.10.2
-run
+check
 ```
+
+`check` doesn't work for every module, but when it does, it saves you from firing something blind.
 
 ### Pivoting
 
-Once you have a Meterpreter session on a host with a second network interface, route through it:
+Once you have a session on a host with a second network interface, route through it:
 
 ```bash
 # Add a route to the internal subnet through session 1
@@ -85,15 +105,11 @@ set SESSION 1
 set SUBNET 172.16.5.0
 run
 
-# Scan the internal subnet through that route
-use auxiliary/scanner/portscan/tcp
-set RHOSTS 172.16.5.0/24
-set PORTS 22,80,445,3389
-run
-
 # Forward one internal web server to your own machine, from inside the session
 portfwd add -l 8080 -p 80 -r 172.16.5.10
 ```
+
+Draw the network as you go. Pivoting is where people lose track of which machine they're actually on.
 
 ### Privilege escalation, first checks
 
@@ -111,16 +127,27 @@ whoami /groups
 systeminfo
 ```
 
-## The SOC side of each step
+## The SOC side: what every step leaves behind
 
-This is the part I'd recommend to any analyst, even if you never take the exam. Every step above leaves a trace:
+This is the part I'd recommend to any analyst, even if you never take the exam. Everything above is noisy if someone's looking.
 
-| Step | MITRE ATT&CK | What it looks like in the logs |
-| --- | --- | --- |
-| Host discovery and port scans | T1046 Network Service Discovery | One source touching many hosts or ports in a short window; firewall denies; IDS scan signatures |
-| Directory brute forcing | T1595.003 Wordlist Scanning | A burst of 404s from one IP, often with a tool's default user agent |
-| Password guessing | T1110 Brute Force | Clusters of event 4625 on Windows, `Failed password` lines in Linux `auth.log` |
-| Exploiting a service | T1210 Exploitation of Remote Services | IDS alerts, and new processes running as SYSTEM with an unusual parent |
-| Pivoting | T1090 Proxy | An internal host that never scans anything suddenly scanning its own subnet |
+| Step | MITRE ATT&CK | Where it shows up | What it looks like |
+| --- | --- | --- | --- |
+| Host discovery | T1018 Remote System Discovery | Firewall, NDR, Zeek | One source sending ICMP or ARP to every address in a range within seconds |
+| Port scanning | T1046 Network Service Discovery | Firewall denies, IDS, `DeviceNetworkEvents` | Hundreds of ports touched on one host, mostly refused, in a short window |
+| SMB enumeration | T1135 Network Share Discovery | Windows 5140 / 5145, IDS | Anonymous or guest session listing shares; null-session attempts |
+| Directory brute forcing | T1595.003 Wordlist Scanning | Web server and WAF logs | A burst of 404s from one IP, often with a tool's default user agent |
+| Password guessing | T1110 Brute Force | Windows 4625 / 4771, Linux `auth.log` | Many failures for one account, then (the bad case) a success |
+| Exploiting a service | T1210 Exploitation of Remote Services | EDR, IDS, Windows 7045 | New service installed, or `services.exe` spawning a shell |
+| Post-exploitation recon | T1033 / T1082 / T1016 | EDR process events, 4688 | `whoami`, `systeminfo`, `ipconfig`, `net` run in a quick cluster by one account |
+| Privilege escalation | T1068 / T1548 | EDR, `auth.log`, 4672 | A low-privilege session suddenly holding admin rights or running as root |
+| Pivoting | T1090 Proxy, T1021 Remote Services | Internal flow logs, EDR | An internal host that never scans anything scanning its own subnet |
 
-The last row is the one I'd remember. An external scan is background noise on the internet. An internal host behaving like a scanner almost never is.
+A few things that stuck with me from doing it the other way round:
+
+- **External scans are weather. Internal scans are an incident.** The internet scans everyone all day. An internal host behaving like a scanner almost never has a good reason.
+- **The success after the failures is the alert.** A thousand failed logons is noise. One success from the same IP at the end is the thing to escalate.
+- **Recon commands come in clusters.** One `whoami` is an admin. `whoami`, `systeminfo`, `ipconfig /all` and `net group "domain admins"` from the same account inside two minutes is someone getting their bearings.
+- **Every tool has a fingerprint.** Default user agents, default wordlists, default timing. Attackers change them, but plenty don't.
+
+I wrote the detection side up properly, with KQL and SPL for each of these, in [eJPTv2 from the SOC side](/notes/ejptv2-soc-side).

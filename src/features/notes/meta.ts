@@ -3,7 +3,7 @@ import type { Note } from './notes'
 export const SITE_TITLE = 'Mohannad Alqadery — SOC Analyst, Abu Dhabi'
 export const NOTES_TITLE = 'Field notes — Mohannad Alqadery'
 export const NOTES_DESCRIPTION =
-  'Study notes, detection queries and methodology from SOC work and certification prep: SC-200, eJPT and eSOC.'
+  'Study notes, detection queries and methodology from SOC work and certification prep: SC-200, eJPTv2 and eSOC.'
 export const NOT_FOUND_TITLE = 'Not found — Mohannad Alqadery'
 
 export const noteTitle = (note: Pick<Note, 'title'>) => `${note.title} — Mohannad Alqadery`

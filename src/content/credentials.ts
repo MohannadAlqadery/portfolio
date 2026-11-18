@@ -39,7 +39,7 @@ export const credentials: Credential[] = [
     credentialId: '186203393',
     issued: '2026-06-24',
     expires: '2029-06-24',
-    badge: { src: '/badges/ejpt.png', alt: 'INE eJPT badge' },
+    badge: { src: '/badges/ejpt.png', alt: 'INE eJPTv2 badge' },
   },
   {
     code: 'eSOC',

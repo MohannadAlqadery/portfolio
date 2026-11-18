@@ -1,12 +1,12 @@
 ---
 title: 'eSOC field notes: a triage routine that holds up'
-description: "INE's Security Operations Certified covers the day-to-day of SOC work. A triage routine, the Windows event IDs worth memorising, and a case-note template."
+description: "INE's Security Operations Certified covers the day-to-day of SOC work. A triage routine, the logs and event IDs worth memorising, and a case-note template."
 date: '2026-11-18'
 tags: [eSOC, Triage, Windows Event Logs, Incident Response]
 cert: eSOC
 ---
 
-eSOC is INE's certification for SOC analysts: monitoring, alert triage, detection and first response. I earned it in July 2026. Rather than summarise the course, here's the routine it reinforced, because that's the part that matters on shift.
+eSOC is INE's certification for SOC analysts: monitoring, alert triage, detection and first response. I earned it in July 2026. Rather than summarise the course, I'd rather write down the routine it reinforced, because that's what actually matters on shift.
 
 The certification covers:
 
@@ -18,13 +18,22 @@ The certification covers:
 - Applied SOC analysis scenarios
 - Threat intelligence and AI-assisted SOC operations
 
+## The first five minutes
+
+Before any analysis, I do the same small things with every alert:
+
+1. **Read the whole alert.** Not the title. The title is a summary written by whoever made the rule, often years ago.
+2. **Check if it's already being handled.** Is there an open incident on the same host or user? Did someone else already pick it up?
+3. **Note the time in UTC.** Every tool shows time differently. Writing it down once, in UTC, saves confusion later.
+4. **Ask how bad it could be.** A domain controller, a finance laptop and a test VM don't get the same urgency.
+
 ## Triage in six questions
 
-1. **What fired, and why?** Read the rule logic, not just its name. A rule called "Suspicious PowerShell" might only be checking for one flag.
-2. **On what?** The host, the user and the IP, and how much each matters. A domain controller isn't a test VM, and a service account isn't a person.
+1. **What fired, and why?** Read the rule logic. A rule called "Suspicious PowerShell" might only be checking for one flag.
+2. **On what?** The host, the user and the IP, and how much each matters. A service account isn't a person, and a server isn't a laptop.
 3. **Is it expected?** Change tickets, scheduled tasks, known admin tools and announced pen tests explain a lot of alerts.
 4. **What happened around it?** Look 30 minutes either side on the same host and user, and check for other alerts on the same entities.
-5. **What do the indicators say?** Enrich IPs, domains and hashes with VirusTotal, AbuseIPDB and internal threat intel. Reputation is a hint, not a verdict.
+5. **What do the indicators say?** Enrich IPs, domains and hashes. Reputation is a hint, not a verdict.
 6. **What's the call?** Decide, write down why, then escalate or close.
 
 The call is usually one of three:
@@ -37,11 +46,20 @@ The call is usually one of three:
 
 Benign true positives are worth tuning. If the same approved activity fires every week, it's costing triage time that real alerts need.
 
+## Enrichment without leaking
+
+Enrichment is where it's easy to make a mistake that's worse than the alert:
+
+- **Search by hash before you upload a file.** Uploading an attachment to a public sandbox can publish a confidential document to the world. A hash lookup can't.
+- **Defang before you paste.** `hxxps://login-example[.]com/reset` in a ticket can't be clicked by accident.
+- **Don't visit a suspicious URL from your workstation.** Use a sandbox or an isolated browser, and remember the attacker may see your request in their logs.
+- **Check internal context too.** Has this IP been seen before in your own logs? Internal history often says more than an outside reputation score.
+
 ## Windows event IDs worth memorising
 
 | Event ID | Log | What it means |
 | --- | --- | --- |
-| 4624 | Security | Successful logon. Check the logon type: 2 interactive, 3 network, 10 remote desktop |
+| 4624 | Security | Successful logon. Check the logon type (table below) |
 | 4625 | Security | Failed logon |
 | 4648 | Security | Logon with explicit credentials, such as `runas` |
 | 4672 | Security | Special privileges assigned to a new logon (an admin logged on) |
@@ -50,10 +68,47 @@ Benign true positives are worth tuning. If the same approved activity fires ever
 | 4720 | Security | User account created |
 | 4728 / 4732 / 4756 | Security | Member added to a global / local / universal security group |
 | 4740 | Security | Account locked out |
+| 4771 | Security | Kerberos pre-authentication failed |
 | 1102 | Security | The audit log was cleared |
 | 4104 | PowerShell Operational | Script block logging: the actual script that ran |
 
+Logon types, because 4624 is useless without them:
+
+| Type | Meaning | Usually |
+| --- | --- | --- |
+| 2 | Interactive | Someone at the keyboard |
+| 3 | Network | File shares, many admin tools |
+| 4 | Batch | Scheduled tasks |
+| 5 | Service | A service starting under an account |
+| 7 | Unlock | Someone unlocking their screen |
+| 10 | Remote interactive | Remote Desktop |
+
 If Sysmon is deployed, add event 1 (process creation with hashes), 3 (network connection), 11 (file created) and 22 (DNS query).
+
+## Linux logs, briefly
+
+| Where | What to look for |
+| --- | --- |
+| `/var/log/auth.log` (Debian, Ubuntu) or `/var/log/secure` (RHEL) | SSH logons, `sudo` use, failed passwords |
+| `journalctl -u ssh` | The same, on systemd machines |
+| `/var/log/syslog` or `/var/log/messages` | General system events, cron, services |
+| `~/.bash_history` | Commands run by a user, if it wasn't cleared |
+
+A few commands I'd keep ready when you have to look at a Linux box directly:
+
+```bash
+# Who logged in recently, and from where
+last -a | head -20
+
+# Failed SSH attempts by source IP
+grep "Failed password" /var/log/auth.log | awk '{print $(NF-3)}' | sort | uniq -c | sort -rn | head
+
+# Everything sudo did today
+journalctl _COMM=sudo --since today
+
+# What's listening, and which process owns it
+ss -tulpn
+```
 
 ## Case notes that someone else can pick up
 
@@ -70,6 +125,8 @@ Actions:     what was done (contain, reset, block) and by whom
 Next steps:  escalated to whom, what's still open
 ```
 
+"Closed, false positive" isn't a case note. "Closed, false positive: backup job `nightly-sync` renames files every night at 02:00, confirmed with the change ticket, requested an exclusion" is.
+
 ## When to escalate
 
 Follow the playbook, and escalate early when:
@@ -80,8 +137,10 @@ Follow the playbook, and escalate early when:
 - the same activity shows up on more than one host
 - the situation isn't covered by any playbook
 
-A clear partial picture handed over early is worth more than a perfect one an hour late.
+A clear partial picture handed over early is worth more than a perfect one an hour late. Nobody has ever been told off for escalating a well-documented maybe.
 
 ## A note on AI in the SOC
 
-AI summaries and assistants speed up reading long alerts and drafting case notes. Treat them like a colleague's first impression: useful, quick, and checked against the raw logs before anything goes into a case.
+AI summaries and assistants speed up reading long alerts and drafting case notes. Treat them like a colleague's first impression: useful, quick, and checked against the raw logs before anything goes into a case. If it says "this IP is known malicious", find the source that says so.
+
+The next note, [Phishing triage, start to finish](/notes/esoc-phishing-triage), walks through the alert type that probably fills more SOC queues than any other.
