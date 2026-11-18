@@ -34,3 +34,6 @@ lhci/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*
