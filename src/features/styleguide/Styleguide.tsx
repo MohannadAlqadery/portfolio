@@ -19,7 +19,7 @@ const swatchGroups: { name: string; swatches: { token: string; hex: string }[] }
       { token: 'raised', hex: '#161A17' },
       { token: 'line', hex: '#222724' },
       { token: 'line-strong', hex: '#2F3531' },
-      { token: 'fg-subtle', hex: '#7A827A' },
+      { token: 'fg-subtle', hex: '#818981' },
       { token: 'fg-muted', hex: '#A3AAA2' },
       { token: 'fg', hex: '#EDEFEA' },
     ],
@@ -145,7 +145,7 @@ export default function Styleguide() {
             </p>
           </Specimen>
           <Specimen label="Label · mono caps">
-            <p className="label text-fg-subtle">CASE-2608 · Reach Digital · Abu Dhabi</p>
+            <p className="label text-fg-subtle">CASE-2608 · REACH Digital · Abu Dhabi</p>
           </Specimen>
         </section>
 
@@ -229,7 +229,7 @@ export default function Styleguide() {
                 <Chip variant="signal" dot>
                   status:active
                 </Chip>
-                <Chip>Reach Digital LLC</Chip>
+                <Chip>REACH Digital LLC</Chip>
                 <Chip>Abu Dhabi</Chip>
                 <Chip>Aug 2026 → now</Chip>
               </div>

@@ -1,7 +1,7 @@
 import type { QueryLine } from '@/features/hero/kql'
 
 export const hero = {
-  status: 'On shift · SOC L1 at Reach Digital',
+  status: 'On shift · SOC L1 at REACH Digital',
   intro:
     'I work the first line of a security operations centre: triaging alerts, separating signal from noise, and following suspicious activity across SIEM and endpoint telemetry until there is a clear answer.',
 } as const
@@ -15,9 +15,9 @@ export const heroQuery: QueryLine[] = [
     { kind: 'plain', text: ' ' },
     { kind: 'field', text: 'Name' },
     { kind: 'plain', text: ' ' },
-    { kind: 'operator', text: 'has' },
+    { kind: 'operator', text: '==' },
     { kind: 'plain', text: ' ' },
-    { kind: 'string', text: '"Alqadery"' },
+    { kind: 'string', text: '"Mohannad"' },
   ],
   [
     { kind: 'pipe', text: '| ' },
@@ -45,7 +45,7 @@ export const heroQuery: QueryLine[] = [
 
 /** The single "record" the query returns. Every value comes straight from the resume. */
 export const heroResult: { field: string; value: string }[] = [
-  { field: 'Role', value: 'SOC L1 Analyst · Reach Digital' },
+  { field: 'Role', value: 'SOC L1 Analyst · REACH Digital' },
   { field: 'Focus', value: 'Alert triage · Investigation · Incident response' },
   { field: 'Certs', value: 'SC-200 · eJPTv2 · eSOC' },
   { field: 'Stack', value: 'Sentinel · Defender XDR · Splunk · KQL' },

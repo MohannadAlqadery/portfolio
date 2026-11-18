@@ -15,7 +15,6 @@ export const site = {
   },
   links: {
     linkedin: 'https://www.linkedin.com/in/mohannad-alqadery',
-    source: 'https://github.com/MohannadAlqadery/portfolio',
   },
   /**
    * Stored in parts and assembled at runtime so the address is not sitting in the HTML for

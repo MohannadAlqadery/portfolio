@@ -1,8 +1,11 @@
-import { useState, type MouseEvent } from 'react'
-import { GithubIcon, LinkedinIcon } from '@/components/icons/BrandIcons'
+import { ArrowUp, Check, Mail } from 'lucide-react'
+import { useState, type MouseEvent, type ReactNode } from 'react'
+import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Container } from '@/components/ui/Container'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
+import { cn } from '@/lib/cn'
+import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail } from '@/lib/email'
 import { scrollToId, scrollToTop } from '@/lib/scroll'
 
@@ -13,10 +16,26 @@ function FooterHeading({ children }: { children: string }) {
 }
 
 const linkClass =
-  'link-underline pb-0.5 text-sm text-fg-muted transition-[color,background-size] hover:text-fg'
+  'group inline-flex items-center gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg'
+
+/** Fixed-width icon slot so every "Elsewhere" label lines up. */
+function IconSlot({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid size-7 shrink-0 place-items-center rounded-sm border border-line text-fg-subtle transition-colors group-hover:border-line-strong group-hover:text-fg [&_svg]:size-3.5',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
+}
 
 export function SiteFooter() {
   const [copied, setCopied] = useState(false)
+  const [firstName, ...rest] = site.name.split(' ')
 
   const onCopyEmail = async () => {
     const ok = await copyToClipboard(getEmail())
@@ -35,30 +54,30 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-line">
-      <Container className="py-16 md:py-20">
-        <div className="grid gap-12 md:grid-cols-12 md:gap-8">
-          <div className="md:col-span-5">
-            <p className="font-display text-headline text-fg">
-              {site.name.split(' ')[0]}
+      <Container className="py-14 md:py-20">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-12 md:gap-8">
+          <div className="col-span-2 md:col-span-6">
+            <p className="font-display text-5xl leading-[0.95] text-fg md:text-headline">
+              {firstName}
               <br />
-              <em className="text-fg-muted">{site.name.split(' ').slice(1).join(' ')}</em>
+              <em className="text-fg-muted">{rest.join(' ')}</em>
             </p>
-            <p className="mt-6 label text-fg-subtle">{site.location.coordinates}</p>
+            <p className="mt-5 label text-fg-subtle">
+              {site.role} · {site.location.city}, {site.location.country}
+            </p>
           </div>
 
           <nav aria-label="Footer" className="md:col-span-3">
             <FooterHeading>Index</FooterHeading>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {sections.map((section, i) => (
                 <li key={section.id}>
                   <a
                     href={`#${section.id}`}
                     onClick={(e) => onSectionClick(e, section.id)}
-                    className={linkClass}
+                    className="inline-flex items-baseline gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg"
                   >
-                    <span className="mr-2 font-mono text-[0.625rem] text-fg-subtle">
-                      {pad(i + 1)}
-                    </span>
+                    <span className="font-mono text-[0.625rem] text-fg-subtle">{pad(i + 1)}</span>
                     {section.label}
                   </a>
                 </li>
@@ -66,70 +85,68 @@ export function SiteFooter() {
             </ul>
           </nav>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <FooterHeading>Elsewhere</FooterHeading>
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               <li>
                 <a
                   href={site.links.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`${linkClass} inline-flex items-center gap-2`}
+                  className={linkClass}
                 >
-                  <LinkedinIcon className="size-3.5" /> LinkedIn
+                  <IconSlot>
+                    <LinkedinIcon />
+                  </IconSlot>
+                  LinkedIn
+                  <span className="sr-only"> (opens in a new tab)</span>
                 </a>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => void onCopyEmail()}
-                  className={`${linkClass} text-left`}
-                >
-                  {copied ? 'Email copied' : 'Copy email'}
+                <button type="button" onClick={() => void onCopyEmail()} className={linkClass}>
+                  <IconSlot className={cn(copied && 'border-signal/50 text-signal')}>
+                    {copied ? <Check /> : <Mail />}
+                  </IconSlot>
+                  <span className={cn(copied && 'text-signal')}>
+                    {copied ? 'Copied' : 'Copy email'}
+                  </span>
                 </button>
                 <output aria-live="polite" className="sr-only">
                   {copied ? 'Email address copied to clipboard' : ''}
                 </output>
               </li>
-              <li>
-                <a
-                  href={site.links.source}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${linkClass} inline-flex items-center gap-2`}
-                >
-                  <GithubIcon className="size-3.5" /> Source
-                </a>
-              </li>
             </ul>
-          </div>
-
-          <div className="md:col-span-2">
-            <FooterHeading>Colophon</FooterHeading>
-            <p className="text-sm leading-relaxed text-fg-subtle">
-              Set in Instrument Serif, Geist and Geist Mono. Built with React, TypeScript and
-              Tailwind.
-            </p>
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col gap-4 border-t border-line pt-6 label text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
-          <p>
+        {/*
+          Phone: [© · back to top] / updated. Desktop: © | updated | back to top.
+          Version and build SHA stay out of sight but are inspectable on the element.
+        */}
+        <div
+          data-version={__APP_VERSION__}
+          data-build={__BUILD_SHA__}
+          className="mt-14 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3"
+        >
+          <p className="md:order-1">
             © {__BUILD_DATE__.slice(0, 4)} {site.name}
           </p>
-          <p className="tabular-nums">
-            v{__APP_VERSION__} · build {__BUILD_SHA__} · {__BUILD_DATE__}
-          </p>
-          <a
-            href="#top"
-            onClick={(e) => {
-              e.preventDefault()
-              scrollToTop()
-            }}
-            className="hover:text-fg"
+          <button
+            type="button"
+            onClick={scrollToTop}
+            className="group inline-flex items-center gap-2 justify-self-end transition-colors hover:text-fg md:order-3"
           >
-            Back to top ↑
-          </a>
+            Back to top
+            <span
+              aria-hidden="true"
+              className="grid size-7 place-items-center rounded-sm border border-line transition-colors group-hover:border-line-strong"
+            >
+              <ArrowUp className="size-3.5" />
+            </span>
+          </button>
+          <p className="col-span-2 md:order-2 md:col-span-1 md:text-center">
+            Updated <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
+          </p>
         </div>
       </Container>
     </footer>
