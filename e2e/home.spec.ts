@@ -27,12 +27,9 @@ test.describe('home page', () => {
   })
 
   test('command palette is accessible and jumps to a section', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'Keyboard feature: the palette button is hidden on phones')
     await page.goto('/')
-    if (isMobile) {
-      await page.getByRole('button', { name: /command palette$/i }).click()
-    } else {
-      await page.keyboard.press('ControlOrMeta+k')
-    }
+    await page.keyboard.press('ControlOrMeta+k')
     const dialog = page.getByRole('dialog', { name: 'Command palette' })
     await expect(dialog).toBeVisible()
 

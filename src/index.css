@@ -141,17 +141,21 @@
 }
 
 /* Page-width wrapper with responsive gutters (16px on phones). */
+/* Gutters never shrink below the device's safe area (notch / Dynamic Island in landscape). */
 @utility container-page {
   margin-inline: auto;
   width: 100%;
   max-width: var(--container-page);
-  padding-inline: 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 
   @media (width >= 40rem) {
-    padding-inline: 1.5rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
   }
   @media (width >= 64rem) {
-    padding-inline: 2rem;
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
   }
 }
 

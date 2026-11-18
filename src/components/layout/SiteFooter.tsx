@@ -55,7 +55,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-line">
-      <Container className="py-14 md:py-20">
+      <Container className="pt-14 pb-[max(3.5rem,calc(env(safe-area-inset-bottom)+2rem))] md:pt-20 md:pb-20">
         <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-12 md:gap-8">
           <div className="col-span-2 md:col-span-6">
             <p className="font-display text-5xl leading-[0.95] text-fg md:text-headline">

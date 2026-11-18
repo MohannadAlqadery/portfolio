@@ -1,4 +1,4 @@
-import { Command as CommandIcon, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useCallback, useId, useRef, useState, type MouseEvent } from 'react'
 import { Container } from '@/components/ui/Container'
 import { Kbd } from '@/components/ui/Kbd'
@@ -50,10 +50,12 @@ export function SiteHeader() {
     <>
       <header
         className={cn(
-          'sticky top-0 z-40 border-b transition-colors duration-300',
-          scrolled || menuOpen
-            ? 'border-line bg-canvas/85 backdrop-blur-md'
-            : 'border-transparent bg-transparent',
+          // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
+          // Phones and tablets always get a solid bar (cleaner under Safari's toolbars and the island);
+          // only wide screens start transparent over the hero.
+          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-colors duration-300',
+          !(scrolled || menuOpen) &&
+            'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
       >
         <Container className="flex h-14 items-center justify-between gap-6">
@@ -136,15 +138,15 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-sm border border-line px-2 text-fg-subtle transition-colors hover:border-line-strong hover:text-fg"
+              // Hidden on phones: it's a keyboard shortcut, and the menu already covers navigation.
+              className="hidden h-8 items-center gap-1.5 rounded-sm border border-line px-2 text-fg-subtle transition-colors hover:border-line-strong hover:text-fg sm:flex"
               aria-keyshortcuts="Control+K Meta+K"
             >
               {/*
                 Named by its content, starting with the visible shortcut ("Ctrl K command palette"),
                 so voice-control users can activate it by saying what they see.
               */}
-              <CommandIcon aria-hidden="true" className="size-3.5 sm:hidden" />
-              <span className="hidden items-center gap-1 sm:flex">
+              <span className="flex items-center gap-1">
                 <Kbd className="border-0 bg-transparent px-0">{modKey}</Kbd>{' '}
                 <Kbd className="border-0 bg-transparent px-0">K</Kbd>
               </span>

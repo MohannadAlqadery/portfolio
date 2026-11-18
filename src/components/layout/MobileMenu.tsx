@@ -58,9 +58,10 @@ export function MobileMenu({
     <div
       id={id}
       hidden={!open}
-      className="fixed inset-x-0 top-14 bottom-0 z-30 overflow-y-auto bg-canvas xl:hidden"
+      // Starts below the header (3.5rem + status bar / island) and keeps clear of the home indicator.
+      className="fixed inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top))] bottom-0 z-30 overflow-y-auto bg-canvas xl:hidden"
     >
-      <Container className="flex min-h-full flex-col justify-between py-8">
+      <Container className="flex min-h-full flex-col justify-between pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <nav aria-label="Sections">
           <ul className="divide-y divide-line border-y border-line">
             {sections.map((section, i) => (
