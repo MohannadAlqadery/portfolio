@@ -82,6 +82,19 @@ export function CodeBlock({
   )
 }
 
+/** "Key takeaways" box used at the top of a note: `<Takeaways>` + a Markdown list in MDX. */
+export function Takeaways({ children }: { children?: ReactNode }) {
+  return (
+    <aside
+      aria-label="Key takeaways"
+      className="my-8 rounded-md border border-signal/30 bg-signal-wash/50 px-5 pt-4 pb-1 [&_ul]:my-3"
+    >
+      <p className="label text-signal">Key takeaways</p>
+      {children}
+    </aside>
+  )
+}
+
 /** Section heading with a stable id and a hover/focus anchor link. */
 export function Heading({ level, children }: { level: 2 | 3; children?: ReactNode }) {
   const id = slugify(textOf(children))

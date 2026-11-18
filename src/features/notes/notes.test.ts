@@ -29,9 +29,15 @@ describe('slugify', () => {
 })
 
 describe('notes', () => {
-  it('has at least two notes for each certification', () => {
-    for (const cert of ['SC-200', 'eJPTv2', 'eSOC']) {
-      expect(notes.filter((n) => n.cert === cert).length).toBeGreaterThanOrEqual(2)
+  it('has exactly one page per earned certification', () => {
+    expect(notes.map((n) => n.cert).sort()).toEqual(['SC-200', 'eJPTv2', 'eSOC'].sort())
+  })
+
+  it('builds an "On this page" table of contents for every note', () => {
+    for (const note of notes) {
+      expect(note.toc.length).toBeGreaterThan(4)
+      expect(new Set(note.toc.map((item) => item.id)).size).toBe(note.toc.length)
+      expect(note.toc.every((item) => /^[a-z0-9-]+$/.test(item.id))).toBe(true)
     }
   })
 

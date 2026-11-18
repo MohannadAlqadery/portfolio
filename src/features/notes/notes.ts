@@ -11,6 +11,8 @@ export type NoteFrontmatter = {
   draft?: boolean
   /** Added at build time by build/remark-reading-time.ts */
   readingMinutes: number
+  /** `##` headings and their ids, added at build time (for "On this page"). */
+  toc: { text: string; id: string }[]
 }
 
 export type Note = NoteFrontmatter & { slug: string; Content: MDXContent }
