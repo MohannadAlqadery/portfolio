@@ -8,8 +8,9 @@ import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
-import { modKeyLabel } from '@/lib/platform'
-import { scrollToId, scrollToTop } from '@/lib/scroll'
+import { useModKey } from '@/hooks/useModKey'
+import { navigate, usePathname } from '@/lib/router'
+import { goHome, goToSection } from '@/lib/scroll'
 import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
 
@@ -23,12 +24,20 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuId = useId()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [modKey] = useState(modKeyLabel)
+  const modKey = useModKey()
+  const pathname = usePathname()
+  const onNotes = pathname.startsWith('/notes')
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
     setMenuOpen(false)
-    scrollToId(id)
+    goToSection(id)
+  }
+
+  const onNotesClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    setMenuOpen(false)
+    navigate('/notes')
   }
 
   // Stable identity: MobileMenu's effect depends on it and must not re-run (and refocus) per render.
@@ -49,11 +58,11 @@ export function SiteHeader() {
       >
         <Container className="flex h-14 items-center justify-between gap-6">
           <a
-            href="#top"
+            href="/"
             onClick={(e) => {
               e.preventDefault()
               setMenuOpen(false)
-              scrollToTop()
+              goHome()
             }}
             className="group flex items-center gap-3"
           >
@@ -76,9 +85,9 @@ export function SiteHeader() {
                 return (
                   <li key={section.id}>
                     <a
-                      href={`#${section.id}`}
+                      href={`/#${section.id}`}
                       onClick={(e) => onNavClick(e, section.id)}
-                      aria-current={isActive ? 'location' : undefined}
+                      aria-current={isActive && !onNotes ? 'location' : undefined}
                       className={cn(
                         'flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[0.8125rem] whitespace-nowrap transition-colors',
                         isActive ? 'text-fg' : 'text-fg-subtle hover:text-fg',
@@ -97,6 +106,28 @@ export function SiteHeader() {
                   </li>
                 )
               })}
+              <li aria-hidden="true" className="mx-1 h-4 w-px bg-line" />
+              <li>
+                <a
+                  href="/notes"
+                  onClick={onNotesClick}
+                  aria-current={onNotes ? 'page' : undefined}
+                  className={cn(
+                    'flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[0.8125rem] whitespace-nowrap transition-colors',
+                    onNotes ? 'text-fg' : 'text-fg-subtle hover:text-fg',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'font-mono text-[0.625rem]',
+                      onNotes ? 'text-signal' : 'text-fg-subtle',
+                    )}
+                  >
+                    ✎
+                  </span>
+                  Notes
+                </a>
+              </li>
             </ul>
           </nav>
 
@@ -150,9 +181,11 @@ export function SiteHeader() {
       <MobileMenu
         id={menuId}
         open={menuOpen}
-        activeId={active}
+        activeId={onNotes ? null : active}
+        notesActive={onNotes}
         onClose={closeMenu}
         onNavigate={onNavClick}
+        onNotes={onNotesClick}
       />
     </>
   )

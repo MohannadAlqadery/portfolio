@@ -12,12 +12,22 @@ type MobileMenuProps = {
   /** `restoreFocus` is true when the menu closed via keyboard (Esc). */
   onClose: (restoreFocus: boolean) => void
   onNavigate: (event: MouseEvent<HTMLAnchorElement>, id: string) => void
+  notesActive: boolean
+  onNotes: (event: MouseEvent<HTMLAnchorElement>) => void
 }
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
 /** Full-height section index for small screens. Hidden from `xl` up, where the inline nav shows. */
-export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMenuProps) {
+export function MobileMenu({
+  id,
+  open,
+  activeId,
+  onClose,
+  onNavigate,
+  notesActive,
+  onNotes,
+}: MobileMenuProps) {
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
   useEffect(() => {
@@ -57,7 +67,7 @@ export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMe
               <li key={section.id}>
                 <a
                   ref={i === 0 ? firstLinkRef : undefined}
-                  href={`#${section.id}`}
+                  href={`/#${section.id}`}
                   onClick={(e) => onNavigate(e, section.id)}
                   aria-current={activeId === section.id ? 'location' : undefined}
                   className="flex items-baseline gap-4 py-4"
@@ -74,6 +84,21 @@ export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMe
                 </a>
               </li>
             ))}
+            <li>
+              <a
+                href="/notes"
+                onClick={onNotes}
+                aria-current={notesActive ? 'page' : undefined}
+                className="flex items-baseline gap-4 py-4"
+              >
+                <span className={cn('label', notesActive ? 'text-signal' : 'text-fg-subtle')}>
+                  ✎
+                </span>
+                <span className="font-display text-4xl text-fg">
+                  Field <em className="text-fg-muted">notes</em>
+                </span>
+              </a>
+            </li>
           </ul>
         </nav>
 

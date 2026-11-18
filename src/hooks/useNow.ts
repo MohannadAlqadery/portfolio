@@ -1,23 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 
-/** Current time, refreshed on each minute boundary (enough for an HH:mm clock). */
+/**
+ * A shared minute clock. One timer for the whole app, aligned to minute boundaries, and a cached
+ * Date per minute so `useSyncExternalStore` sees a stable snapshot.
+ */
+let current: Date | null = null
+let timer: ReturnType<typeof setTimeout> | undefined
+const listeners = new Set<() => void>()
+
+function getSnapshot(): Date {
+  const now = Date.now()
+  if (!current || Math.floor(now / 60_000) !== Math.floor(current.getTime() / 60_000)) {
+    current = new Date(now)
+  }
+  return current
+}
+
+function schedule() {
+  timer = setTimeout(
+    () => {
+      listeners.forEach((listener) => listener())
+      schedule()
+    },
+    60_000 - (Date.now() % 60_000),
+  )
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  if (listeners.size === 1) schedule()
+  return () => {
+    listeners.delete(listener)
+    if (listeners.size === 0) clearTimeout(timer)
+  }
+}
+
+/** Current time, refreshed on each minute boundary (enough for an HH:mm clock or a date check). */
 export function useNow(): Date {
-  const [now, setNow] = useState(() => new Date())
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+}
 
-  useEffect(() => {
-    let interval: number | undefined
-    const msToNextMinute = 60_000 - (Date.now() % 60_000)
-
-    const timeout = window.setTimeout(() => {
-      setNow(new Date())
-      interval = window.setInterval(() => setNow(new Date()), 60_000)
-    }, msToNextMinute)
-
-    return () => {
-      window.clearTimeout(timeout)
-      if (interval !== undefined) window.clearInterval(interval)
-    }
-  }, [])
-
-  return now
+/**
+ * Same clock, but `null` in pre-rendered HTML and during hydration, so build-time output never
+ * disagrees with the visitor's clock. Use for anything rendered on pre-rendered pages.
+ */
+export function useHydratedNow(): Date | null {
+  return useSyncExternalStore(subscribe, getSnapshot, () => null)
 }

@@ -1,3 +1,5 @@
+import { navigate, normalisePath } from './router'
+
 function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 }
@@ -19,4 +21,18 @@ export function scrollToId(id: string): void {
 export function scrollToTop(): void {
   window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
+const onHomePage = () => normalisePath(window.location.pathname) === '/'
+
+/** Jump to a homepage section from anywhere: scrolls if already home, otherwise navigates. */
+export function goToSection(id: string): void {
+  if (onHomePage()) scrollToId(id)
+  else navigate(`/#${id}`)
+}
+
+/** Back to the top of the homepage from anywhere. */
+export function goHome(): void {
+  if (onHomePage()) scrollToTop()
+  else navigate('/')
 }

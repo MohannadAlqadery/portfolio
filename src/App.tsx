@@ -1,38 +1,67 @@
-import { lazy, Suspense, type LazyExoticComponent } from 'react'
-import { SiteFooter } from '@/components/layout/SiteFooter'
-import { SiteHeader } from '@/components/layout/SiteHeader'
-import { SkipLink } from '@/components/layout/SkipLink'
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
+import { Layout } from '@/components/layout/Layout'
 import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
 import { useHash } from '@/hooks/useHash'
+import { matchRoute, usePathname } from '@/lib/router'
 import { HomePage } from '@/pages/HomePage'
+import NotFoundPage from '@/pages/NotFoundPage'
 
-// Internal views, loaded on demand so they never weigh on the main bundle.
+// Internal views (hash routes on the homepage), loaded on demand.
 const internalViews: Record<string, LazyExoticComponent<() => React.JSX.Element>> = {
   '#styleguide': lazy(() => import('@/features/styleguide/Styleguide')),
   '#og': lazy(() => import('@/features/og/OgCard')),
 }
 
-export default function App() {
-  const hash = useHash()
-  const InternalView = internalViews[hash]
+export type RoutePages = {
+  NotesIndexPage: ComponentType
+  NotePage: ComponentType<{ slug: string }>
+  NotFoundPage: ComponentType
+}
 
-  return (
-    <CommandPaletteProvider>
-      {InternalView ? (
+// In the browser, notes and 404 load as separate chunks so the homepage bundle doesn't grow.
+// The pre-renderer passes the same components eagerly, inside the same Suspense boundary, so the
+// server HTML and the client tree match and can be hydrated without a flash.
+const lazyPages: RoutePages = {
+  NotesIndexPage: lazy(() => import('@/features/notes/NotesIndexPage')),
+  NotePage: lazy(() => import('@/features/notes/NotePage')),
+  // Tiny, and also used by NotePage for unknown slugs, so it stays in the main bundle.
+  NotFoundPage,
+}
+
+function RouteView({ pathname, pages }: { pathname: string; pages: RoutePages }) {
+  const route = matchRoute(pathname)
+  switch (route.name) {
+    case 'home':
+      return <HomePage />
+    case 'notes':
+      return <pages.NotesIndexPage />
+    case 'note':
+      return <pages.NotePage slug={route.slug} />
+    case 'not-found':
+      return <pages.NotFoundPage />
+  }
+}
+
+export default function App({ pages = lazyPages }: { pages?: RoutePages }) {
+  const hash = useHash()
+  const pathname = usePathname()
+  const InternalView = pathname === '/' ? internalViews[hash] : undefined
+
+  if (InternalView) {
+    return (
+      <CommandPaletteProvider>
         <Suspense fallback={null}>
           <InternalView />
         </Suspense>
-      ) : (
-        <>
-          <SkipLink targetId="main" />
-          <div id="top" />
-          <SiteHeader />
-          <main id="main" tabIndex={-1} className="outline-none">
-            <HomePage />
-          </main>
-          <SiteFooter />
-        </>
-      )}
-    </CommandPaletteProvider>
+      </CommandPaletteProvider>
+    )
+  }
+
+  return (
+    <Layout>
+      <Suspense fallback={<div className="min-h-[70svh]" />}>
+        <RouteView pathname={pathname} pages={pages} />
+      </Suspense>
+    </Layout>
   )
 }
