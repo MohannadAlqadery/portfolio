@@ -21,9 +21,13 @@ function subscribe(onChange: () => void) {
   }
 }
 
-/** Path without a trailing slash (except the root). */
+/**
+ * Path without a trailing slash (except the root) or a pre-rendered file name, so
+ * `/notes.html` and `/index.html` resolve like `/notes` and `/` when served as static files.
+ */
 export function normalisePath(path: string): string {
-  return path.length > 1 ? path.replace(/\/+$/, '') : path
+  const clean = path.replace(/(?:\/index)?\.html$/, '')
+  return clean.length > 1 ? clean.replace(/\/+$/, '') : clean || '/'
 }
 
 const getSnapshot = () => normalisePath(window.location.pathname)

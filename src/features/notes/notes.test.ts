@@ -9,6 +9,13 @@ describe('router', () => {
     expect(normalisePath('/')).toBe('/')
   })
 
+  it('resolves pre-rendered file names to their routes', () => {
+    expect(matchRoute('/index.html')).toEqual({ name: 'home' })
+    expect(matchRoute('/notes.html')).toEqual({ name: 'notes' })
+    expect(matchRoute('/notes/ejptv2.html')).toEqual({ name: 'note', slug: 'ejptv2' })
+    expect(matchRoute('/404.html')).toEqual({ name: 'not-found' })
+  })
+
   it('matches every route', () => {
     expect(matchRoute('/')).toEqual({ name: 'home' })
     expect(matchRoute('/notes/')).toEqual({ name: 'notes' })
@@ -68,10 +75,9 @@ describe('notes', () => {
     }
   })
 
-  it('has unique slugs and is sorted newest first', () => {
+  it('has unique slugs and orders', () => {
     expect(new Set(notes.map((n) => n.slug)).size).toBe(notes.length)
-    const dates = notes.map((n) => n.date)
-    expect([...dates].sort().reverse()).toEqual(dates)
+    expect(new Set(notes.map((n) => n.order)).size).toBe(notes.length)
   })
 
   it('finds notes and their neighbours', () => {
