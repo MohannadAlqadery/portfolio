@@ -1,5 +1,9 @@
 import type { MDXComponents } from 'mdx/types'
+import { Link } from '@/components/ui/Link'
 import { CodeBlock, Heading } from './NoteElements'
+
+const linkClass =
+  'text-fg underline decoration-line-strong underline-offset-4 transition-colors hover:text-signal hover:decoration-signal'
 
 /** Element mapping for note bodies. Styling lives here so MDX files stay plain Markdown. */
 export const mdxComponents: MDXComponents = {
@@ -8,10 +12,18 @@ export const mdxComponents: MDXComponents = {
   p: (props) => <p className="my-5 leading-relaxed text-fg-muted" {...props} />,
   a: ({ href = '', children, ...props }) => {
     const external = /^https?:\/\//.test(href)
+    // Links to other pages on this site navigate in-app (still real <a href> for crawlers).
+    if (href.startsWith('/')) {
+      return (
+        <Link to={href} className={linkClass}>
+          {children}
+        </Link>
+      )
+    }
     return (
       <a
         href={href}
-        className="text-fg underline decoration-line-strong underline-offset-4 transition-colors hover:text-signal hover:decoration-signal"
+        className={linkClass}
         {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
         {...props}
       >

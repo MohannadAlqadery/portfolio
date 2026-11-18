@@ -29,8 +29,15 @@ describe('slugify', () => {
 })
 
 describe('notes', () => {
-  it('has the three certification notes', () => {
-    expect(notes.map((n) => n.cert).sort()).toEqual(['SC-200', 'eJPTv2', 'eSOC'].sort())
+  it('has at least two notes for each certification', () => {
+    for (const cert of ['SC-200', 'eJPTv2', 'eSOC']) {
+      expect(notes.filter((n) => n.cert === cert).length).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('uses the eJPTv2 name, never the bare "eJPT"', () => {
+    const text = notes.map((n) => `${n.title} ${n.description} ${n.tags.join(' ')}`).join(' ')
+    expect(text).not.toMatch(/eJPT(?!v2)/)
   })
 
   it('has complete, well-formed frontmatter', () => {

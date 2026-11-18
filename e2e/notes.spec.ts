@@ -3,6 +3,14 @@ import { expect, test } from './fixtures.ts'
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const NOTE = '/notes/sc-200-field-notes'
+const ALL_NOTES = [
+  'sc-200-field-notes',
+  'sc-200-kql-cookbook',
+  'ejptv2-field-notes',
+  'ejptv2-soc-side',
+  'esoc-field-notes',
+  'esoc-phishing-triage',
+]
 
 test.describe('field notes', () => {
   test('note pages are pre-rendered with their own metadata', async ({ request }) => {
@@ -17,7 +25,7 @@ test.describe('field notes', () => {
   })
 
   test('hydrate without errors and pass an accessibility audit', async ({ page }) => {
-    for (const path of ['/notes', NOTE, '/notes/ejpt-field-notes', '/notes/esoc-field-notes']) {
+    for (const path of ['/notes', ...ALL_NOTES.map((slug) => `/notes/${slug}`)]) {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
       const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
@@ -28,11 +36,16 @@ test.describe('field notes', () => {
 
   test('list filters by tag and opens a note', async ({ page }) => {
     await page.goto('/notes')
-    const list = page.getByRole('list', { name: 'Notes' })
-    await expect(list.getByRole('listitem')).toHaveCount(3)
+    const items = page.getByRole('list', { name: 'Notes' }).getByRole('listitem')
+    await expect(items).toHaveCount(ALL_NOTES.length)
 
     await page.getByRole('button', { name: 'KQL', exact: true }).click()
-    await expect(list.getByRole('listitem')).toHaveCount(1)
+    const filtered = await items.count()
+    expect(filtered).toBeGreaterThan(0)
+    expect(filtered).toBeLessThan(ALL_NOTES.length)
+    for (const item of await items.all()) {
+      await expect(item.getByText('KQL', { exact: true })).toBeVisible()
+    }
 
     await page.getByRole('link', { name: /SC-200 field notes/ }).click()
     await expect(page).toHaveURL(/\/notes\/sc-200-field-notes$/)
@@ -61,6 +74,14 @@ test.describe('field notes', () => {
     await expect(page.locator('#cases')).toBeInViewport()
   })
 
+  test('links between notes work', async ({ page }) => {
+    await page.goto('/notes/ejptv2-field-notes')
+    // The in-text link (the "Next note" card also mentions the title, so match exactly).
+    await page.getByRole('link', { name: 'eJPTv2 from the SOC side', exact: true }).click()
+    await expect(page).toHaveURL(/\/notes\/ejptv2-soc-side$/)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('from the SOC side')
+  })
+
   test('unknown pages show the 404 view', async ({ page }) => {
     await page.goto('/this-page-does-not-exist')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Signal\s+lost/)
@@ -70,7 +91,7 @@ test.describe('field notes', () => {
 
   test('sitemap lists every note', async ({ request }) => {
     const sitemap = await (await request.get('/sitemap.xml')).text()
-    for (const slug of ['sc-200-field-notes', 'ejpt-field-notes', 'esoc-field-notes']) {
+    for (const slug of ALL_NOTES) {
       expect(sitemap).toContain(`/notes/${slug}</loc>`)
     }
   })
