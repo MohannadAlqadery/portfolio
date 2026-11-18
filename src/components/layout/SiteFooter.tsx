@@ -2,12 +2,13 @@ import { ArrowUp, Check, Mail } from 'lucide-react'
 import { useState, type MouseEvent, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Container } from '@/components/ui/Container'
+import { Link } from '@/components/ui/Link'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail } from '@/lib/email'
-import { scrollToId, scrollToTop } from '@/lib/scroll'
+import { goToSection, scrollToTop } from '@/lib/scroll'
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
@@ -49,12 +50,12 @@ export function SiteFooter() {
 
   const onSectionClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
-    scrollToId(id)
+    goToSection(id)
   }
 
   return (
     <footer className="border-t border-line">
-      <Container className="py-14 md:py-20">
+      <Container className="pt-14 pb-[max(3.5rem,calc(env(safe-area-inset-bottom)+2rem))] md:pt-20 md:pb-20">
         <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-12 md:gap-8">
           <div className="col-span-2 md:col-span-6">
             <p className="font-display text-5xl leading-[0.95] text-fg md:text-headline">
@@ -73,7 +74,7 @@ export function SiteFooter() {
               {sections.map((section, i) => (
                 <li key={section.id}>
                   <a
-                    href={`#${section.id}`}
+                    href={`/#${section.id}`}
                     onClick={(e) => onSectionClick(e, section.id)}
                     className="inline-flex items-baseline gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg"
                   >
@@ -82,6 +83,15 @@ export function SiteFooter() {
                   </a>
                 </li>
               ))}
+              <li>
+                <Link
+                  to="/notes"
+                  className="inline-flex items-baseline gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg"
+                >
+                  <span className="font-mono text-[0.625rem] text-fg-subtle">✎</span>
+                  Field notes
+                </Link>
+              </li>
             </ul>
           </nav>
 

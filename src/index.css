@@ -141,17 +141,21 @@
 }
 
 /* Page-width wrapper with responsive gutters (16px on phones). */
+/* Gutters never shrink below the device's safe area (notch / Dynamic Island in landscape). */
 @utility container-page {
   margin-inline: auto;
   width: 100%;
   max-width: var(--container-page);
-  padding-inline: 1rem;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 
   @media (width >= 40rem) {
-    padding-inline: 1.5rem;
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
   }
   @media (width >= 64rem) {
-    padding-inline: 2rem;
+    padding-left: max(2rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
   }
 }
 
@@ -267,6 +271,25 @@
   &:hover::before {
     opacity: 1;
   }
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Code highlighting
+ * Shiki emits `var(--shiki-*)` at build time (css-variables theme); the palette lives here so code
+ * matches the hero console: keywords signal-green, strings amber, comments subtle.
+ * --------------------------------------------------------------------------------------------- */
+:root {
+  --shiki-foreground: var(--color-fg-muted);
+  --shiki-background: transparent;
+  --shiki-token-keyword: var(--color-signal);
+  --shiki-token-string: var(--color-sev-medium);
+  --shiki-token-string-expression: var(--color-sev-medium);
+  --shiki-token-comment: var(--color-fg-subtle);
+  --shiki-token-constant: var(--color-sev-low);
+  --shiki-token-function: var(--color-fg);
+  --shiki-token-parameter: var(--color-fg);
+  --shiki-token-punctuation: var(--color-fg-subtle);
+  --shiki-token-link: var(--color-signal);
 }
 
 /* ------------------------------------------------------------------------------------------------

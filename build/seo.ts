@@ -10,7 +10,7 @@ type SeoOptions = {
 }
 
 /** JSON-LD Person, generated from the same content the page renders. No email or phone. */
-function personJsonLd(siteUrl: string): string {
+export function personJsonLd(siteUrl: string): string {
   const data = {
     '@context': 'https://schema.org',
     '@type': 'Person',
@@ -34,15 +34,15 @@ function personJsonLd(siteUrl: string): string {
 /**
  * - Replaces `%SITE_URL%` in index.html (canonical, Open Graph URLs).
  * - Injects JSON-LD structured data.
- * - Emits robots.txt, sitemap.xml and /.well-known/security.txt at build time.
+ * - Emits robots.txt and /.well-known/security.txt at build time (client build only).
  */
 export function seo({ siteUrl, buildDate }: SeoOptions): Plugin {
-  const day = buildDate.toISOString().slice(0, 10)
   const expires = new Date(buildDate)
   expires.setUTCFullYear(expires.getUTCFullYear() + 1)
 
   return {
     name: 'portfolio-seo',
+    apply: (_config, env) => !env.isSsrBuild,
     transformIndexHtml: {
       order: 'pre',
       handler(html) {
@@ -65,17 +65,7 @@ export function seo({ siteUrl, buildDate }: SeoOptions): Plugin {
         fileName: 'robots.txt',
         source: `User-agent: *\nAllow: /\n\nSitemap: ${siteUrl}/sitemap.xml\n`,
       })
-      this.emitFile({
-        type: 'asset',
-        fileName: 'sitemap.xml',
-        source: [
-          '<?xml version="1.0" encoding="UTF-8"?>',
-          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-          `  <url><loc>${siteUrl}/</loc><lastmod>${day}</lastmod></url>`,
-          '</urlset>',
-          '',
-        ].join('\n'),
-      })
+      // sitemap.xml is written by scripts/prerender.ts, which knows every route (home + notes).
       // RFC 9116. Contact points at LinkedIn so the email stays off plain-text files.
       this.emitFile({
         type: 'asset',

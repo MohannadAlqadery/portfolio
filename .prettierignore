@@ -1,4 +1,7 @@
 dist
+dist-ssr
+# MDX v3 syntax isn't fully supported by Prettier's markdown parser
+*.mdx
 coverage
 node_modules
 package-lock.json

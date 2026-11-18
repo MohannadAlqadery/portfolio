@@ -1,4 +1,4 @@
-import { Command as CommandIcon, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useCallback, useId, useRef, useState, type MouseEvent } from 'react'
 import { Container } from '@/components/ui/Container'
 import { Kbd } from '@/components/ui/Kbd'
@@ -6,10 +6,12 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
+import { useHideOnScroll } from '@/hooks/useHideOnScroll'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
-import { modKeyLabel } from '@/lib/platform'
-import { scrollToId, scrollToTop } from '@/lib/scroll'
+import { useModKey } from '@/hooks/useModKey'
+import { navigate, usePathname } from '@/lib/router'
+import { goHome, goToSection } from '@/lib/scroll'
 import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
 
@@ -23,12 +25,21 @@ export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuId = useId()
   const menuButtonRef = useRef<HTMLButtonElement>(null)
-  const [modKey] = useState(modKeyLabel)
+  const modKey = useModKey()
+  const pathname = usePathname()
+  const onNotes = pathname.startsWith('/notes')
+  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
     setMenuOpen(false)
-    scrollToId(id)
+    goToSection(id)
+  }
+
+  const onNotesClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    setMenuOpen(false)
+    navigate('/notes')
   }
 
   // Stable identity: MobileMenu's effect depends on it and must not re-run (and refocus) per render.
@@ -39,21 +50,38 @@ export function SiteHeader() {
 
   return (
     <>
+      {/*
+        Solid strip behind the status bar / Dynamic Island. Page content never shows through it,
+        even while the header below is slid away. Zero height on devices without a top inset.
+      */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-canvas xl:hidden"
+      />
+      {/* Reading progress, driven purely by CSS scroll timeline; sits just below the status bar. */}
+      <div
+        aria-hidden="true"
+        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal/80"
+      />
       <header
+        onFocusCapture={revealHeader}
         className={cn(
-          'sticky top-0 z-40 border-b transition-colors duration-300',
-          scrolled || menuOpen
-            ? 'border-line bg-canvas/85 backdrop-blur-md'
-            : 'border-transparent bg-transparent',
+          // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
+          // Phones and tablets: solid bar that slides away while reading and returns on scroll up.
+          // Wide screens: always visible, transparent over the hero until scrolled.
+          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-[transform,background-color,border-color] duration-300 ease-out',
+          headerHidden && 'max-xl:-translate-y-full',
+          !(scrolled || menuOpen) &&
+            'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
       >
         <Container className="flex h-14 items-center justify-between gap-6">
           <a
-            href="#top"
+            href="/"
             onClick={(e) => {
               e.preventDefault()
               setMenuOpen(false)
-              scrollToTop()
+              goHome()
             }}
             className="group flex items-center gap-3"
           >
@@ -76,9 +104,9 @@ export function SiteHeader() {
                 return (
                   <li key={section.id}>
                     <a
-                      href={`#${section.id}`}
+                      href={`/#${section.id}`}
                       onClick={(e) => onNavClick(e, section.id)}
-                      aria-current={isActive ? 'location' : undefined}
+                      aria-current={isActive && !onNotes ? 'location' : undefined}
                       className={cn(
                         'flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[0.8125rem] whitespace-nowrap transition-colors',
                         isActive ? 'text-fg' : 'text-fg-subtle hover:text-fg',
@@ -97,6 +125,28 @@ export function SiteHeader() {
                   </li>
                 )
               })}
+              <li aria-hidden="true" className="mx-1 h-4 w-px bg-line" />
+              <li>
+                <a
+                  href="/notes"
+                  onClick={onNotesClick}
+                  aria-current={onNotes ? 'page' : undefined}
+                  className={cn(
+                    'flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[0.8125rem] whitespace-nowrap transition-colors',
+                    onNotes ? 'text-fg' : 'text-fg-subtle hover:text-fg',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'font-mono text-[0.625rem]',
+                      onNotes ? 'text-signal' : 'text-fg-subtle',
+                    )}
+                  >
+                    ✎
+                  </span>
+                  Notes
+                </a>
+              </li>
             </ul>
           </nav>
 
@@ -105,15 +155,15 @@ export function SiteHeader() {
             <button
               type="button"
               onClick={() => setPaletteOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-sm border border-line px-2 text-fg-subtle transition-colors hover:border-line-strong hover:text-fg"
+              // Hidden on phones: it's a keyboard shortcut, and the menu already covers navigation.
+              className="hidden h-8 items-center gap-1.5 rounded-sm border border-line px-2 text-fg-subtle transition-colors hover:border-line-strong hover:text-fg sm:flex"
               aria-keyshortcuts="Control+K Meta+K"
             >
               {/*
                 Named by its content, starting with the visible shortcut ("Ctrl K command palette"),
                 so voice-control users can activate it by saying what they see.
               */}
-              <CommandIcon aria-hidden="true" className="size-3.5 sm:hidden" />
-              <span className="hidden items-center gap-1 sm:flex">
+              <span className="flex items-center gap-1">
                 <Kbd className="border-0 bg-transparent px-0">{modKey}</Kbd>{' '}
                 <Kbd className="border-0 bg-transparent px-0">K</Kbd>
               </span>
@@ -136,11 +186,6 @@ export function SiteHeader() {
             </button>
           </div>
         </Container>
-        {/* Reading progress, driven purely by CSS scroll timeline. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 -bottom-px h-px scroll-progress bg-signal/70"
-        />
       </header>
 
       {/*
@@ -150,9 +195,11 @@ export function SiteHeader() {
       <MobileMenu
         id={menuId}
         open={menuOpen}
-        activeId={active}
+        activeId={onNotes ? null : active}
+        notesActive={onNotes}
         onClose={closeMenu}
         onNavigate={onNavClick}
+        onNotes={onNotesClick}
       />
     </>
   )

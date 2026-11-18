@@ -1,18 +1,17 @@
 import { ArrowDown } from 'lucide-react'
-import { useState } from 'react'
 import { ButtonLink } from '@/components/ui/Button'
 import { Container } from '@/components/ui/Container'
 import { Kbd } from '@/components/ui/Kbd'
 import { StatusDot } from '@/components/ui/StatusDot'
 import { hero, heroQuery, heroResult } from '@/content/hero'
 import { site } from '@/content/site'
-import { modKeyLabel } from '@/lib/platform'
+import { useModKey } from '@/hooks/useModKey'
 import { scrollToId } from '@/lib/scroll'
 import { QueryConsole } from './QueryConsole'
 
 export function Hero() {
   const [firstName, ...rest] = site.name.split(' ')
-  const [modKey] = useState(modKeyLabel)
+  const modKey = useModKey()
 
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden">

@@ -1,12 +1,14 @@
 import { Command } from 'cmdk'
-import { ArrowUp, AtSign, Copy, CornerDownLeft, Hash } from 'lucide-react'
+import { ArrowUp, AtSign, Copy, CornerDownLeft, FileText, Hash, NotebookPen } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Kbd } from '@/components/ui/Kbd'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
+import { notePath, notes } from '@/features/notes/notes'
 import { copyToClipboard, getEmail } from '@/lib/email'
-import { scrollToId, scrollToTop } from '@/lib/scroll'
+import { navigate } from '@/lib/router'
+import { goHome, goToSection } from '@/lib/scroll'
 
 type CommandPaletteProps = {
   open: boolean
@@ -81,7 +83,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
           &gt;
         </span>
         <Command.Input
-          placeholder="Jump to a section or run a command"
+          placeholder="Jump to a section, open a note, or run a command"
           className="h-12 flex-1 bg-transparent font-mono text-sm text-fg outline-none placeholder:text-fg-subtle"
         />
         <Kbd>Esc</Kbd>
@@ -100,19 +102,42 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
               keywords={[section.id]}
               icon={<Hash />}
               hint={pad(i + 1)}
-              onSelect={() => run(() => scrollToId(section.id))}
+              onSelect={() => run(() => goToSection(section.id))}
             >
               {section.label}
             </Item>
           ))}
           <Item
-            value="back to top"
+            value="back to top home"
             keywords={['home', 'top']}
             icon={<ArrowUp />}
-            onSelect={() => run(scrollToTop)}
+            onSelect={() => run(goHome)}
           >
             Back to top
           </Item>
+        </Command.Group>
+
+        <Command.Group heading="Field notes" className={groupClass}>
+          <Item
+            value="all field notes"
+            keywords={['notes', 'blog', 'writing']}
+            icon={<NotebookPen />}
+            onSelect={() => run(() => navigate('/notes'))}
+          >
+            All field notes
+          </Item>
+          {notes.map((note) => (
+            <Item
+              key={note.slug}
+              value={`note ${note.title}`}
+              keywords={note.tags}
+              icon={<FileText />}
+              hint={note.cert}
+              onSelect={() => run(() => navigate(notePath(note.slug)))}
+            >
+              {note.title}
+            </Item>
+          ))}
         </Command.Group>
 
         <Command.Group heading="Contact" className={groupClass}>

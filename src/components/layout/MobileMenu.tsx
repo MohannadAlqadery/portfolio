@@ -12,12 +12,22 @@ type MobileMenuProps = {
   /** `restoreFocus` is true when the menu closed via keyboard (Esc). */
   onClose: (restoreFocus: boolean) => void
   onNavigate: (event: MouseEvent<HTMLAnchorElement>, id: string) => void
+  notesActive: boolean
+  onNotes: (event: MouseEvent<HTMLAnchorElement>) => void
 }
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
 /** Full-height section index for small screens. Hidden from `xl` up, where the inline nav shows. */
-export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMenuProps) {
+export function MobileMenu({
+  id,
+  open,
+  activeId,
+  onClose,
+  onNavigate,
+  notesActive,
+  onNotes,
+}: MobileMenuProps) {
   const firstLinkRef = useRef<HTMLAnchorElement>(null)
 
   useEffect(() => {
@@ -48,16 +58,17 @@ export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMe
     <div
       id={id}
       hidden={!open}
-      className="fixed inset-x-0 top-14 bottom-0 z-30 overflow-y-auto bg-canvas xl:hidden"
+      // Starts below the header (3.5rem + status bar / island) and keeps clear of the home indicator.
+      className="fixed inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top))] bottom-0 z-30 overflow-y-auto bg-canvas xl:hidden"
     >
-      <Container className="flex min-h-full flex-col justify-between py-8">
+      <Container className="flex min-h-full flex-col justify-between pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <nav aria-label="Sections">
           <ul className="divide-y divide-line border-y border-line">
             {sections.map((section, i) => (
               <li key={section.id}>
                 <a
                   ref={i === 0 ? firstLinkRef : undefined}
-                  href={`#${section.id}`}
+                  href={`/#${section.id}`}
                   onClick={(e) => onNavigate(e, section.id)}
                   aria-current={activeId === section.id ? 'location' : undefined}
                   className="flex items-baseline gap-4 py-4"
@@ -74,6 +85,21 @@ export function MobileMenu({ id, open, activeId, onClose, onNavigate }: MobileMe
                 </a>
               </li>
             ))}
+            <li>
+              <a
+                href="/notes"
+                onClick={onNotes}
+                aria-current={notesActive ? 'page' : undefined}
+                className="flex items-baseline gap-4 py-4"
+              >
+                <span className={cn('label', notesActive ? 'text-signal' : 'text-fg-subtle')}>
+                  ✎
+                </span>
+                <span className="font-display text-4xl text-fg">
+                  Field <em className="text-fg-muted">notes</em>
+                </span>
+              </a>
+            </li>
           </ul>
         </nav>
 
