@@ -29,8 +29,11 @@ export function SectionHeader({
   className,
 }: SectionHeaderProps) {
   return (
-    <header
-      className={cn('grid gap-4 border-t border-line pt-5 md:grid-cols-12 md:gap-8', className)}
+    <div
+      className={cn(
+        'grid reveal gap-4 border-t border-line pt-5 md:grid-cols-12 md:gap-8',
+        className,
+      )}
     >
       <p className="label text-fg-subtle md:col-span-3">
         <span className="text-signal">{pad(index)}</span>
@@ -45,6 +48,6 @@ export function SectionHeader({
         </h2>
         {children ? <div className="mt-4 max-w-2xl text-fg-muted">{children}</div> : null}
       </div>
-    </header>
+    </div>
   )
 }

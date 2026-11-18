@@ -13,11 +13,21 @@
     "typescript/no-explicit-any": "error",
     "typescript/consistent-type-imports": "error",
     "import/no-cycle": "error",
+    "no-underscore-dangle": [
+      "warn",
+      { "allow": ["__APP_VERSION__", "__BUILD_SHA__", "__BUILD_DATE__"] }
+    ],
     "import/no-unassigned-import": [
       "warn",
       { "allow": ["**/*.css", "@testing-library/jest-dom/vitest"] }
     ],
     "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
-  "ignorePatterns": ["dist", "node_modules", "coverage"]
+  "overrides": [
+    {
+      "files": ["e2e/**/*.ts"],
+      "rules": { "react/rules-of-hooks": "off" }
+    }
+  ],
+  "ignorePatterns": ["dist", "node_modules", "coverage", "test-results", "playwright-report"]
 }
