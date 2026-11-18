@@ -1,0 +1,342 @@
+---
+title: "eJPTv2: the attacker's loop, read from the SOC"
+description: "INE's Junior Penetration Tester (eJPTv2), written up by a blue-team analyst: the method, what to focus on, the commands worth keeping close, and detections in KQL and SPL for every step."
+date: '2026-11-18'
+tags: [eJPTv2, Penetration Testing, Detection, KQL, SPL]
+cert: eJPTv2
+---
+
+eJPTv2 is INE's entry-level penetration testing certification, and the exam is practical: you get a lab network in the browser and answer questions from what you find in it. I passed in June 2026.
+
+I'm a blue-team analyst, so I'll be honest about why I took it. I didn't want to become a pentester. I wanted to stop guessing what the other side of an alert looks like. When a SIEM shows a burst of failed logons, or a server suddenly talking to half the subnet, it helps a lot to have done the attacker's version of that yourself, in a lab, on purpose.
+
+So this page has two halves. The first is the exam: method, focus areas and the standard commands. The second is the part I actually care about: what every one of those steps leaves in the logs, and how I'd find it.
+
+These notes stick to the public exam objectives. Check INE's exam page for the current format and duration before you book.
+
+<Takeaways>
+
+- **Method beats exploits.** A boring, repeatable loop gets you further than any single trick.
+- **Enumeration is never finished, only paused.** When you're stuck, the answer is usually in something you scanned too quickly.
+- **Take notes as if someone else has to read them.** Many questions depend on a detail you saw hours earlier.
+- **Every step is noisy if someone's looking.** Scans, guessing, exploitation, recon and pivoting all leave clear traces.
+- **For a defender, the real value is the second half:** knowing what each technique looks like in a SIEM.
+
+</Takeaways>
+
+## What the exam covers
+
+INE lists four areas:
+
+- **Assessment methodologies**: information gathering, footprinting, scanning and enumeration.
+- **Host and network auditing**: finding weak configurations, credentials and exposed services.
+- **Host and network penetration testing**: exploitation, post-exploitation, privilege escalation and pivoting.
+- **Web application penetration testing**: discovering content, testing inputs and common web flaws.
+
+## What to focus on
+
+1. **Enumeration, enumeration, enumeration.** Port scans, service versions, shares, web directories. Most answers live here.
+2. **Reading tool output properly.** Not just running Nmap, but understanding what each line tells you.
+3. **Common services.** SMB, SSH, HTTP, FTP and databases: what they expose and how they're usually misconfigured.
+4. **Web basics.** Finding hidden content, reading page source, spotting obvious input problems.
+5. **The idea of pivoting.** Understanding that a compromised host can reach networks you can't, and keeping track of where you are.
+6. **Note-taking.** Honestly, this one decides a lot.
+
+## The method
+
+Every host goes through the same loop: find it, enumerate everything it runs, get in, look around, then see what it can reach that you couldn't. It's boring on purpose. When you're tired, a loop you trust is worth more than any clever trick.
+
+### Take notes like someone else has to read them
+
+A simple table per network goes a long way:
+
+| Host | Open ports | Services and versions | Credentials | Notes |
+| --- | --- | --- | --- | --- |
+| 10.10.10.5 | 22, 80, 445 | OpenSSH 8.2, Apache 2.4.41, Samba | admin from web config | Can reach 172.16.5.0/24 |
+
+Keep a running log underneath it: time, what you tried, what happened. Write down failed attempts too, so you don't try the same thing three times.
+
+### Pace yourself
+
+Long, open-book exams reward pacing more than speed. Take breaks. Read every question before you start, because some of them tell you exactly where to look next.
+
+## Commands worth keeping close
+
+These are the standard tools from the course. Run them against your own lab or the exam environment only.
+
+### Discovery
+
+```bash
+# Live hosts on a subnet
+nmap -sn 10.10.10.0/24
+
+# All TCP ports first, then versions and default scripts on what's open
+nmap -p- --min-rate 1000 -T4 10.10.10.5 -oN ports.txt
+nmap -sV -sC -p 22,80,445 10.10.10.5 -oN services.txt
+```
+
+Two scans, not one. The fast sweep tells you where to look; the slower version scan tells you what's actually there. Save everything with `-oN`, because you'll want it again.
+
+### SMB and web
+
+```bash
+# Shares available without credentials
+smbclient -L //10.10.10.5 -N
+enum4linux -a 10.10.10.5
+
+# Hidden directories and files
+gobuster dir -u http://10.10.10.5 -w /usr/share/wordlists/dirb/common.txt -x php,txt
+```
+
+On web apps, read the page source and anything that looks like a config or backup file before reaching for more tools. A surprising amount is sitting in plain sight.
+
+### Credentials
+
+Only after enumeration gives you a likely username. Guessing blindly is slow and loud.
+
+```bash
+hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://10.10.10.5 -t 4
+```
+
+### Metasploit, the boring way
+
+The habit worth building is reading before running: what the module does, what it needs, and whether the target is likely to be affected.
+
+```bash
+msfconsole -q
+search <service or CVE>
+info <module>
+show options
+set RHOSTS 10.10.10.5
+check
+```
+
+`check` doesn't work for every module, but when it does, it saves you from firing something blind.
+
+### Pivoting
+
+Once you have a session on a host with a second network interface, route through it:
+
+```bash
+# Add a route to the internal subnet through session 1
+use post/multi/manage/autoroute
+set SESSION 1
+set SUBNET 172.16.5.0
+run
+
+# Forward one internal web server to your own machine, from inside the session
+portfwd add -l 8080 -p 80 -r 172.16.5.10
+```
+
+Draw the network as you go. Pivoting is where people lose track of which machine they're actually on.
+
+### Privilege escalation, first checks
+
+```bash
+# Linux
+sudo -l
+find / -perm -4000 -type f 2>/dev/null
+cat /etc/crontab
+```
+
+```powershell
+# Windows
+whoami /priv
+whoami /groups
+systeminfo
+```
+
+## The SOC side: what every step leaves behind
+
+This is the half I'd recommend to any analyst, even if you never take the exam.
+
+| Step | MITRE ATT&CK | Where it shows up | What it looks like |
+| --- | --- | --- | --- |
+| Host discovery | T1018 Remote System Discovery | Firewall, NDR, Zeek | One source sending ICMP or ARP to every address in a range within seconds |
+| Port scanning | T1046 Network Service Discovery | Firewall denies, IDS, `DeviceNetworkEvents` | Hundreds of ports touched on one host, mostly refused, in a short window |
+| SMB enumeration | T1135 Network Share Discovery | Windows 5140 / 5145, IDS | Anonymous or guest sessions listing shares |
+| Directory brute forcing | T1595.003 Wordlist Scanning | Web server and WAF logs | A burst of 404s from one IP, often with a tool's default user agent |
+| Password guessing | T1110 Brute Force | Windows 4625 / 4771, Linux `auth.log` | Many failures for one account, then (the bad case) a success |
+| Exploiting a service | T1210 Exploitation of Remote Services | EDR, IDS, Windows 7045 | New service installed, or `services.exe` spawning a shell |
+| Post-exploitation recon | T1033 / T1082 / T1016 | EDR process events, 4688 | `whoami`, `systeminfo`, `ipconfig`, `net` in a quick cluster by one account |
+| Privilege escalation | T1068 / T1548 | EDR, `auth.log`, 4672 | A low-privilege session suddenly holding admin rights |
+| Pivoting | T1090 Proxy, T1021 Remote Services | Internal flow logs, EDR | An internal host that never scans anything scanning its own subnet |
+
+A few things that stuck with me from doing it the other way round:
+
+- **External scans are weather. Internal scans are an incident.** The internet scans everyone all day. An internal host behaving like a scanner almost never has a good reason.
+- **The success after the failures is the alert.** A thousand failed logons is noise. One success from the same IP at the end is what you escalate.
+- **Recon commands come in clusters.** One `whoami` is an admin. `whoami`, `systeminfo`, `ipconfig /all` and `net group "domain admins"` from one account inside two minutes is someone getting their bearings.
+- **Every tool has a fingerprint.** Default user agents, wordlists and timing. Attackers change them, but plenty don't.
+
+The queries below are starting points. Run them, look at what normal looks like in your environment, and only then pick thresholds.
+
+### Scans: the network view and the endpoint view
+
+Firewall logs in Sentinel (`CommonSecurityLog`) show a scan as a fan-out: one source, many destinations or ports, very little data.
+
+```kql
+CommonSecurityLog
+| where TimeGenerated > ago(1h)
+| summarize Ports = dcount(DestinationPort), Hosts = dcount(DestinationIP), Events = count()
+    by SourceIP, bin(TimeGenerated, 5m)
+| where Ports > 50 or Hosts > 20
+| order by Ports desc
+```
+
+Defender sees it from the endpoint, which catches an internal machine doing the scanning:
+
+```kql
+DeviceNetworkEvents
+| where Timestamp > ago(1h)
+| where ActionType in ("ConnectionFailed", "ConnectionAttempt")
+| where ipv4_is_private(RemoteIP)
+| summarize Targets = dcount(RemoteIP), Ports = dcount(RemotePort)
+    by DeviceName, InitiatingProcessFileName, bin(Timestamp, 5m)
+| where Targets > 20 or Ports > 50
+```
+
+`InitiatingProcessFileName` usually answers the first question. A known scanner run by IT is a ticket. `powershell.exe` or an unknown binary is an incident.
+
+### Web directory brute forcing
+
+In Splunk with standard Apache access logs:
+
+```spl
+index=web sourcetype=access_combined status=404
+| bin _time span=1m
+| stats count AS not_found dc(uri_path) AS paths values(useragent) AS agents BY _time, clientip
+| where not_found > 100
+| sort - not_found
+```
+
+The follow-up matters more: did that client get a `200` on something it shouldn't have, like a backup file, an admin page or a config? Swap the status and filter to that `clientip`.
+
+### Password guessing on Windows
+
+Event 4625 is a failed logon; the logon type tells you how (3 is network, 10 is remote desktop).
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(1h)
+| where EventID == 4625
+| summarize Failures = count(), Accounts = dcount(TargetUserName)
+    by IpAddress, LogonType, bin(TimeGenerated, 10m)
+| where Failures > 20
+```
+
+Then the query that actually matters, failures followed by a success from the same source:
+
+```kql
+let failures = SecurityEvent
+    | where TimeGenerated > ago(1h) and EventID == 4625
+    | summarize Failures = count() by IpAddress, TargetUserName
+    | where Failures > 20;
+SecurityEvent
+| where TimeGenerated > ago(1h) and EventID == 4624
+| join kind=inner failures on IpAddress, TargetUserName
+| project TimeGenerated, TargetUserName, IpAddress, LogonType, Failures
+```
+
+If this returns a row, I'm not triaging an alert any more. I'm investigating a compromised account.
+
+### Password guessing on Linux
+
+SSH failures land in `auth.log` (or the journal), and in Sentinel's `Syslog` if forwarded:
+
+```kql
+Syslog
+| where TimeGenerated > ago(1h)
+| where ProcessName == "sshd" and SyslogMessage has "Failed password"
+| extend SourceIP = extract(@"from (\d+\.\d+\.\d+\.\d+)", 1, SyslogMessage)
+| summarize Attempts = count() by HostName, SourceIP
+| where Attempts > 15
+```
+
+On the box itself, in a pinch:
+
+```bash
+grep "Failed password" /var/log/auth.log | awk '{print $(NF-3)}' | sort | uniq -c | sort -rn | head
+grep "Accepted" /var/log/auth.log | tail -20
+```
+
+### Exploitation: new services and odd parents
+
+Service exploitation on Windows tends to leave a service that wasn't there before, or a system process spawning something it shouldn't. New services are event 7045:
+
+```kql
+Event
+| where TimeGenerated > ago(1d)
+| where EventLog == "System" and EventID == 7045
+| project TimeGenerated, Computer, RenderedDescription
+```
+
+Unusual children of core system processes, from Defender:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(1d)
+| where InitiatingProcessFileName in~ ("services.exe", "spoolsv.exe", "lsass.exe", "wmiprvse.exe")
+| where FileName in~ ("cmd.exe", "powershell.exe", "rundll32.exe", "mshta.exe")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine
+```
+
+### Post-exploitation recon
+
+The commands are harmless one at a time. The cluster is the signal:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(1d)
+| where FileName in~ ("whoami.exe", "systeminfo.exe", "ipconfig.exe", "net.exe", "net1.exe", "nltest.exe", "quser.exe")
+| summarize Commands = make_set(ProcessCommandLine, 20), Count = count()
+    by DeviceName, AccountName, bin(Timestamp, 10m)
+| where Count >= 4
+```
+
+Read `Commands` as a story. `net group "domain admins" /domain` in there turns a curious user into a priority.
+
+### Privilege escalation
+
+Signals I'd watch: event 4672 for an account that has never had special privileges before (a `leftanti` against the last 30 days finds first-time admins), unexpected `sudo` use in `auth.log`, and new members of privileged groups:
+
+```kql
+SecurityEvent
+| where TimeGenerated > ago(7d)
+| where EventID in (4728, 4732, 4756)
+| project TimeGenerated, Computer, GroupName = TargetUserName, MemberAdded = MemberName, ChangedBy = SubjectUserName
+```
+
+### Pivoting and lateral movement
+
+This is the one I care about most, because it's how a single bad laptop becomes an incident report. An internal host connecting to many internal hosts on admin ports is rarely innocent:
+
+```kql
+DeviceNetworkEvents
+| where Timestamp > ago(1d)
+| where RemotePort in (22, 135, 445, 3389, 5985, 5986)
+| where ipv4_is_private(RemoteIP)
+| summarize Targets = dcount(RemoteIP), Ports = make_set(RemotePort)
+    by DeviceName, InitiatingProcessFileName, bin(Timestamp, 10m)
+| where Targets > 10
+```
+
+Remote logons tell the other half: type 3 and type 10 logons onto a server from a workstation that has never connected to it before.
+
+## How I'd use all this on shift
+
+- **Correlate, don't stack.** One scan alert, one brute-force alert and one recon alert on the same host within an hour is one incident, not three tickets.
+- **Ask what came next.** Did the scan find something? Did the guessing succeed? Did the recon lead to movement?
+- **Tune with evidence.** If IT's scanner trips the rule every Tuesday, put it in a watchlist with a note explaining why. Don't just raise the threshold until the noise goes away.
+- **Write it down.** The case notes should let the next person repeat your queries without asking you.
+
+## Advice before you book
+
+- Do the course labs properly, not just watch them. Muscle memory matters.
+- Practise on a few beginner-friendly lab machines outside the course, to get used to environments you haven't seen before.
+- Build your own note template before the exam, not during it.
+- Get comfortable being stuck. The skill is going back to enumeration calmly, not panicking.
+
+## After you pass
+
+If you're on the blue side like me, take one technique a week and ask: how would I detect this in our environment, and would I actually see it today? That turns a pentest certificate into better detections, which is the whole point.

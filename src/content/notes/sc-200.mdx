@@ -1,0 +1,266 @@
+---
+title: 'SC-200: a field guide to KQL, Sentinel and Defender'
+description: "Everything I'd tell someone preparing for Microsoft's Security Operations Analyst exam: what to focus on, the KQL worth knowing cold, and the Sentinel and Defender ideas that trip people up."
+date: '2026-11-18'
+tags: [SC-200, KQL, Microsoft Sentinel, Defender XDR, Threat Hunting]
+cert: SC-200
+---
+
+SC-200 is the exam behind Microsoft Certified: Security Operations Analyst Associate. I passed it in September 2026, and if I had to start again, I'd change one thing: I'd open a KQL window on day one instead of clicking around portals for a week.
+
+The portals are where you look. KQL is how you actually find things. Once the language stops feeling foreign, the rest of the exam turns into "where does this setting live", which is far easier to learn.
+
+Nothing here comes from the exam itself. Microsoft exams are under NDA, so everything below comes from the public skills outline, the documentation, and a lot of time spent writing queries.
+
+<Takeaways>
+
+- **KQL is the backbone.** Learn it first and everything else gets easier.
+- **Know which table answers which question.** Half of hunting is opening the right table.
+- **`Timestamp` in Defender, `TimeGenerated` in Sentinel.** The most common reason a copied query returns nothing.
+- **Understand the "why" of each Sentinel feature:** analytics rules, entity mapping, automation rules, playbooks, watchlists.
+- **Practise in a real workspace.** Reading about a rule and building one end to end are different skills.
+
+</Takeaways>
+
+## What the exam covers
+
+The skills outline has three areas:
+
+- **Manage a security operations environment.** Setting up Microsoft Sentinel and Defender XDR: data connectors, analytics rules, automation, and the settings that decide what turns into an incident.
+- **Respond to security incidents.** Investigating and cleaning up across Defender XDR, Defender for Cloud and Sentinel.
+- **Perform threat hunting.** Hunting with KQL, keeping evidence as bookmarks, and turning a good hunt into a detection.
+
+Microsoft updates the outline a few times a year, so read the current study guide on Microsoft Learn before you book. The pass mark is 700 out of 1000. The certification renews every year through a free online assessment that opens six months before it expires. Mine's due in September 2027, and I'd rather take it early than find out in August that the outline moved.
+
+## What to focus on
+
+If your time is limited, this is the order I'd spend it in:
+
+1. **KQL fundamentals.** `where`, `summarize`, `join`, `let`, `extend`, `project`, time functions. You'll use them in every part of the exam.
+2. **Sentinel analytics rules end to end.** Query, entity mapping, incident grouping, automation. This is where configuration and KQL meet.
+3. **Defender XDR incidents and response actions.** What an incident is, how alerts are grouped, and what you can do to a device.
+4. **The data.** Which product produces which table, and roughly what's in it.
+5. **Defender for Cloud basics.** Recommendations versus alerts, and how it connects to Sentinel.
+
+What I wouldn't spend much time on: memorising exact menu paths. They change, and understanding what a feature is for gets you further than knowing where it lives today.
+
+## The stack in one paragraph
+
+Defender XDR is where alerts from endpoints, identities, email and cloud apps get pulled together into incidents. Sentinel is the SIEM: it collects logs from everything else, runs your analytics rules and automates the response. Both speak KQL, with one difference that catches everyone: in Defender advanced hunting the time column is `Timestamp`, in Sentinel's own tables it's `TimeGenerated`. When a query you copied returns nothing, check that before anything else.
+
+## Where the logs actually live
+
+| Table | What's in it | Where |
+| --- | --- | --- |
+| `SigninLogs` | Interactive Entra ID sign-ins, with result codes, IPs and locations | Sentinel |
+| `AuditLogs` | Directory changes: users, groups, role assignments, app consents | Sentinel |
+| `OfficeActivity` | Exchange, SharePoint and Teams activity, including inbox rules | Sentinel |
+| `SecurityEvent` | Windows Security log: logons, process creation, group changes | Sentinel |
+| `Syslog` / `CommonSecurityLog` | Linux and network appliances (firewalls, proxies, often CEF) | Sentinel |
+| `DeviceProcessEvents` | Every process an onboarded endpoint started, with command lines | Defender |
+| `DeviceNetworkEvents` | Connections per device and process | Defender |
+| `EmailEvents` / `UrlClickEvents` | Mail flow and Safe Links clicks | Defender |
+
+## KQL worth knowing cold
+
+| Operator | What it's for |
+| --- | --- |
+| `where`, `project`, `extend` | Filter rows, pick columns, add calculated columns |
+| `summarize ... by` | Group and count: `count()`, `dcount()`, `make_set()`, `arg_max()` |
+| `bin()` | Bucket timestamps, e.g. `bin(TimeGenerated, 1h)` |
+| `join` | Combine tables; know `inner`, `leftouter` and `leftanti` |
+| `let` | Name a value or sub-query so the main query stays readable |
+| `has` vs `contains` | `has` matches whole terms and is fast; `contains` matches any substring |
+
+Habits that save a lot of waiting:
+
+- Put the time filter first, always. Every query, even the throwaway ones.
+- Filter as early as you can and `project` late. Narrow rows first, then pick columns.
+- Add `| take 10` while you're building, so you see the shape of the data before you summarise it.
+- Prefer `has` over `contains` unless you really need a substring. On a big table it's the difference between a query that runs and one that times out.
+- Copy the idea, not the thresholds. A "more than 20" that's perfect in one tenant is noise in another. Run the query without the final `where`, look at the numbers, then pick a line.
+
+### Start every query the same way
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(1d)           // 1. time
+| where ResultType != "0"                 // 2. cheap filter
+| where AppDisplayName has "Azure Portal" // 3. narrower filter
+| summarize Failures = count() by UserPrincipalName, IPAddress
+| order by Failures desc
+```
+
+### Password spraying versus brute force
+
+Same table, same failure code, opposite shape. Spraying is many accounts with a few attempts each from one source:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == "50126" // invalid username or password
+| summarize Attempts = count(), Accounts = dcount(UserPrincipalName) by IPAddress
+| where Accounts >= 10
+| order by Accounts desc
+```
+
+Brute force is one account taking a beating, so group by the account:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(1d)
+| where ResultType == "50126"
+| summarize Attempts = count() by UserPrincipalName, IPAddress
+| where Attempts > 30
+```
+
+The follow-up is always the same: did any of those IPs get a successful sign-in afterwards? That `join` is what turns an alert into an incident.
+
+### Encoded PowerShell, and Office apps spawning shells
+
+Base64-encoded commands are a classic way to hide what a script does. This is the Defender version, so the time column is `Timestamp`:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine matches regex @"(?i)\s-(e|enc|encodedcommand)\s"
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, ProcessCommandLine
+```
+
+Look at `InitiatingProcessFileName`. PowerShell launched by Word deserves far more attention than PowerShell launched by an admin's terminal, which is why this one is worth keeping:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(7d)
+| where InitiatingProcessFileName in~ ("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe")
+| where FileName in~ ("powershell.exe", "cmd.exe", "wscript.exe", "cscript.exe", "mshta.exe", "rundll32.exe")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessFileName, FileName, ProcessCommandLine
+```
+
+### "First time we've seen this" with `leftanti`
+
+The most useful join I know. Build a baseline of what's normal, then keep only the recent rows that don't match it. Here, successful sign-ins from a country the user hasn't signed in from in two weeks:
+
+```kql
+let lookback = 14d;
+let recent = 1d;
+let known = SigninLogs
+    | where TimeGenerated between (ago(lookback) .. ago(recent))
+    | where ResultType == "0"
+    | summarize by UserPrincipalName, Country = tostring(LocationDetails.countryOrRegion);
+SigninLogs
+| where TimeGenerated > ago(recent)
+| where ResultType == "0"
+| extend Country = tostring(LocationDetails.countryOrRegion)
+| join kind=leftanti known on UserPrincipalName, Country
+| project TimeGenerated, UserPrincipalName, Country, IPAddress, AppDisplayName
+```
+
+Swap the columns and the same pattern finds a first-time process on a server, a first-time admin tool or a first-time destination port.
+
+### Parsing JSON without fighting it
+
+Two tools do most of the work: `tostring()` to pull a value out, and `mv-expand` to turn an array into rows. Inbox rules that forward mail outside are a classic sign of a compromised mailbox:
+
+```kql
+OfficeActivity
+| where TimeGenerated > ago(7d)
+| where Operation in ("New-InboxRule", "Set-InboxRule")
+| mv-expand Parameter = todynamic(Parameters)
+| where tostring(Parameter.Name) in ("ForwardTo", "RedirectTo", "ForwardAsAttachmentTo")
+| project TimeGenerated, UserId, Operation, ForwardingTarget = tostring(Parameter.Value), ClientIP
+```
+
+And role assignments, because a new Global Administrator should never be a surprise:
+
+```kql
+AuditLogs
+| where TimeGenerated > ago(7d)
+| where OperationName == "Add member to role"
+| extend Actor = tostring(InitiatedBy.user.userPrincipalName)
+| extend Target = tostring(TargetResources[0].userPrincipalName)
+| extend Role = tostring(TargetResources[0].modifiedProperties[1].newValue)
+| project TimeGenerated, Actor, Target, Role
+```
+
+The index on `modifiedProperties` can shift between log versions. Run it once with `| project TargetResources` and look at the JSON yourself before trusting it.
+
+### Spikes, not fixed thresholds
+
+Fixed thresholds break the moment the business changes. `series_decompose_anomalies` compares each hour with the pattern around it instead:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(14d)
+| where ResultType != "0"
+| make-series Failures = count() default = 0 on TimeGenerated from ago(14d) to now() step 1h
+| extend (Anomalies, Score, Baseline) = series_decompose_anomalies(Failures, 2.5)
+| mv-expand TimeGenerated to typeof(datetime), Failures to typeof(long), Anomalies to typeof(int)
+| where Anomalies == 1
+| project TimeGenerated, Failures
+```
+
+Add `render timechart` while exploring. Seeing the shape beats reading numbers.
+
+### Rare things and latest state
+
+A file hash seen on exactly one device, for the first time today:
+
+```kql
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| summarize Devices = dcount(DeviceName), FirstSeen = min(Timestamp) by SHA256, FileName
+| where Devices == 1 and FirstSeen > ago(1d)
+| order by FirstSeen desc
+```
+
+And `arg_max` for "what does each device look like right now":
+
+```kql
+DeviceInfo
+| summarize arg_max(Timestamp, OSPlatform, OSVersion, PublicIP) by DeviceName
+```
+
+## Sentinel ideas that trip people up
+
+- **Analytics rule types.** Scheduled rules run a KQL query on an interval. NRT (near-real-time) rules run every minute, with some limits. Microsoft Security rules create incidents from alerts other Microsoft products already raised.
+- **Entity mapping.** Map accounts, hosts and IPs in every rule. Without it, incidents don't connect and the investigation graph is mostly empty.
+- **Automation rules versus playbooks.** Automation rules are lightweight triage: assign an owner, change severity, add tags, close known noise or call a playbook. Playbooks are Logic Apps for real workflows like enrichment, notifications or isolating a device.
+- **Watchlists.** Small CSV lookups, like VIP users or approved admin IPs, used with `_GetWatchlist('name')`. Great for cutting noise without rewriting the rule.
+- **Bookmarks.** When a hunt finds something, bookmark the rows. They keep the evidence and can be promoted into an incident.
+
+### Turning a hunt into a rule
+
+Before I'd turn a hunting query into a scheduled analytics rule, I'd check:
+
+1. **Does it run fast?** Trim columns and time ranges.
+2. **Are the entities mapped?** Account, host and IP at minimum.
+3. **What would a week of results look like?** If it would have fired 300 times, it's a hunting query, not a rule.
+4. **Is there an exclusion list?** Known-good accounts or IPs belong in a watchlist, not hard-coded.
+5. **Would the analyst who gets this at 3am understand it?** Write the description for them.
+
+## The Defender XDR side
+
+- **Alerts and incidents** aren't the same thing. An incident groups related alerts across endpoint, identity, email and cloud apps, and that's the level you investigate at.
+- **Automated investigation and response** can clean things up on its own. The Action center shows what it did and what's waiting for approval.
+- **Device response actions:** isolate the device, restrict app execution, run an antivirus scan, collect an investigation package, or open a live response session.
+- **Defender for Cloud** has two halves people blur together: recommendations (posture, what's misconfigured) and security alerts (threats, what's happening).
+
+## How I'd study it
+
+1. Work through the free SC-200 learning path on Microsoft Learn, in order. Don't skip the KQL modules because they look basic.
+2. Write KQL against real-looking data early. The Log Analytics demo environment at [aka.ms/LADemo](https://aka.ms/LADemo) lets you query without building anything.
+3. Build a small Sentinel workspace on an Azure free account, connect a couple of sources and build one analytics rule end to end: query, entities, incident settings, automation rule. Keep an eye on the cost settings.
+4. Take Microsoft's free practice assessment for SC-200 on Learn, and read the explanations for the questions you got right too.
+5. A week later, rewrite each query on this page from memory. If you can't, you read it but haven't learned it yet.
+
+## On exam day
+
+- Read the whole question before the options. Microsoft questions often hinge on one word: "minimise cost", "least administrative effort", "without custom code".
+- When two answers both work, the right one usually matches that one word.
+- Flag and move on. Coming back with fresh eyes beats staring.
+
+## After you pass
+
+Keep writing KQL. The certification proves you learned it once; the job needs you to use it every week. And put a reminder in your calendar for the renewal assessment, six months before the expiry date.

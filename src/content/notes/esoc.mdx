@@ -1,0 +1,278 @@
+---
+title: 'eSOC: triage, phishing and the habits that hold up'
+description: "INE's Security Operations Certified covers the day-to-day of SOC work. My triage routine, the logs and event IDs worth memorising, a full phishing walkthrough, and what to focus on."
+date: '2026-11-18'
+tags: [eSOC, Triage, Phishing, Windows Event Logs, Incident Response]
+cert: eSOC
+---
+
+eSOC is INE's certification for SOC analysts: monitoring, alert triage, detection and first response. I earned it in July 2026. Rather than summarise the course, I'd rather write down the routine it reinforced, because the routine is what actually matters on shift.
+
+Most of this page is habits. Tools change between jobs. Asking the right questions in the right order doesn't.
+
+<Takeaways>
+
+- **Read the whole alert, not the title.** Titles are summaries written by whoever made the rule.
+- **Context decides urgency.** A domain controller, a finance laptop and a test VM never get the same priority.
+- **Enrich without leaking.** Look up hashes before uploading files, and defang everything you paste.
+- **Write case notes the next shift can finish without you.**
+- **Escalate a well-documented maybe early** rather than a perfect answer late.
+
+</Takeaways>
+
+## What the certification covers
+
+- SOC foundations and analyst readiness
+- Logging, SIEM and alert analysis
+- Incident detection, triage and response
+- SOC tools, enrichment and workflow integration
+- Case management, ticketing and reporting
+- Applied SOC analysis scenarios
+- Threat intelligence and AI-assisted SOC operations
+
+## What to focus on
+
+1. **A triage routine you can run half asleep.** The six questions below, every time.
+2. **Windows event IDs and logon types.** You'll read them daily.
+3. **Enrichment and its risks.** Which lookups are safe, and which ones leak data.
+4. **Phishing analysis end to end.** It's the alert type you'll see most.
+5. **Case notes and escalation.** Good analysis is wasted if the write-up is unclear.
+
+## The first five minutes
+
+Before any analysis, I do the same small things with every alert:
+
+1. **Read the whole alert.** The title was written by whoever made the rule, often years ago.
+2. **Check whether it's already being handled.** An open incident on the same host or user? Someone else already on it?
+3. **Note the time in UTC.** Every tool shows time differently. Writing it once, in UTC, saves confusion later.
+4. **Ask how bad it could be.** That decides how fast everything after this needs to happen.
+
+## Triage in six questions
+
+1. **What fired, and why?** Read the rule logic. A rule called "Suspicious PowerShell" might only be checking for one flag.
+2. **On what?** The host, the user and the IP, and how much each matters. A service account isn't a person, and a server isn't a laptop.
+3. **Is it expected?** Change tickets, scheduled tasks, known admin tools and announced pen tests explain a lot of alerts.
+4. **What happened around it?** Look 30 minutes either side on the same host and user, and check for other alerts on the same entities.
+5. **What do the indicators say?** Enrich IPs, domains and hashes. Reputation is a hint, not a verdict.
+6. **What's the call?** Decide, write down why, then escalate or close.
+
+| Verdict | Meaning | Example |
+| --- | --- | --- |
+| True positive | Malicious and real | Credential theft tool on a workstation |
+| Benign true positive | Real activity, but authorised | A pen tester's scan, an admin's remote session |
+| False positive | The rule fired on something it shouldn't have | A backup job matching a "mass file rename" rule |
+
+Benign true positives are worth tuning. If the same approved activity fires every week, it's costing triage time that real alerts need.
+
+## Enrichment without leaking
+
+Enrichment is where it's easy to make a mistake that's worse than the alert:
+
+- **Search by hash before uploading a file.** Uploading an attachment to a public sandbox can publish a confidential document to the world. A hash lookup can't.
+- **Defang before you paste.** `hxxps://login-example[.]com/reset` in a ticket can't be clicked by accident.
+- **Don't visit suspicious URLs from your workstation.** Use a sandbox or an isolated browser, and remember the attacker may see your request in their logs.
+- **Check internal history too.** Has this IP shown up in your own logs before? Internal context often says more than an outside reputation score.
+
+## Windows event IDs worth memorising
+
+| Event ID | Log | What it means |
+| --- | --- | --- |
+| 4624 | Security | Successful logon. Check the logon type (below) |
+| 4625 | Security | Failed logon |
+| 4648 | Security | Logon with explicit credentials, such as `runas` |
+| 4672 | Security | Special privileges assigned to a new logon (an admin logged on) |
+| 4688 | Security | Process created. Turn on command-line auditing or it's half as useful |
+| 4697 / 7045 | Security / System | A service was installed |
+| 4720 | Security | User account created |
+| 4728 / 4732 / 4756 | Security | Member added to a global / local / universal security group |
+| 4740 | Security | Account locked out |
+| 4771 | Security | Kerberos pre-authentication failed |
+| 1102 | Security | The audit log was cleared |
+| 4104 | PowerShell Operational | Script block logging: the actual script that ran |
+
+Logon types, because 4624 is useless without them:
+
+| Type | Meaning | Usually |
+| --- | --- | --- |
+| 2 | Interactive | Someone at the keyboard |
+| 3 | Network | File shares, many admin tools |
+| 4 | Batch | Scheduled tasks |
+| 5 | Service | A service starting under an account |
+| 7 | Unlock | Someone unlocking their screen |
+| 10 | Remote interactive | Remote Desktop |
+
+If Sysmon is deployed, add event 1 (process creation with hashes), 3 (network connection), 11 (file created) and 22 (DNS query).
+
+## Linux logs, briefly
+
+| Where | What to look for |
+| --- | --- |
+| `/var/log/auth.log` (Debian, Ubuntu) or `/var/log/secure` (RHEL) | SSH logons, `sudo` use, failed passwords |
+| `journalctl -u ssh` | The same, on systemd machines |
+| `/var/log/syslog` or `/var/log/messages` | General system events, cron, services |
+| `~/.bash_history` | Commands run by a user, if it wasn't cleared |
+
+Commands I'd keep ready when you have to look at a Linux box directly:
+
+```bash
+# Who logged in recently, and from where
+last -a | head -20
+
+# Failed SSH attempts by source IP
+grep "Failed password" /var/log/auth.log | awk '{print $(NF-3)}' | sort | uniq -c | sort -rn | head
+
+# Everything sudo did today
+journalctl _COMM=sudo --since today
+
+# What's listening, and which process owns it
+ss -tulpn
+```
+
+## Phishing, start to finish
+
+If there's one alert type every SOC analyst gets good at whether they like it or not, it's phishing. Speed matters more than usual here: every minute spent deciding is a minute someone else might be clicking the same link. The example below is made up, and its domains use the reserved `.example` suffix.
+
+### 1. Read the report, then the email
+
+Start with what the user said. "I clicked it" and "it looked odd so I reported it" are very different incidents, and the first changes the priority immediately. Then look at the message the way the user saw it: sender name, subject, the ask. Most phishing wants one of three things: credentials, a payment, or a file opened.
+
+### 2. Headers tell you where it really came from
+
+The display name is decoration. The headers are evidence:
+
+```text
+Return-Path: <bounce@mailer.billing.example>
+From: "Accounts Payable" <ap@contoso-payments.example>
+Reply-To: ap.desk@freemail.example
+Subject: Overdue invoice INV-20931
+Authentication-Results: mx.example.com;
+       spf=pass smtp.mailfrom=mailer.billing.example;
+       dkim=pass header.d=mailer.billing.example;
+       dmarc=fail (p=none) header.from=contoso-payments.example
+```
+
+What I'd notice, in order:
+
+- **`Reply-To` is a free mail address.** Replies go somewhere the "company" doesn't control. Classic for invoice and payment fraud.
+- **SPF and DKIM pass, but for a different domain.** They prove `mailer.billing.example` sent it, not `contoso-payments.example`. That's why DMARC fails: the domains don't line up.
+- **`p=none`.** The sender's DMARC policy only monitors, so the failure didn't stop delivery.
+
+Read the `Received:` lines from the bottom up. The lowest one is closest to the real origin.
+
+### 3. Links: look, don't click
+
+- Defang first: `hxxps://login-billing[.]example/reset` can go into a ticket safely.
+- Compare the visible text with the real `href`. They often differ.
+- Expand shortened links with an expander or sandbox, not your browser.
+- If you need to see the landing page, use a sandbox. A fake Microsoft 365 login page confirms credential harvesting on its own.
+
+### 4. Attachments: hash first
+
+```powershell
+# On an analysis machine, never on the user's laptop
+Get-FileHash .\INV-20931.html -Algorithm SHA256
+```
+
+```bash
+sha256sum INV-20931.html
+```
+
+If the hash is unknown and you need more, detonate it in a sandbox your organisation approves. HTML attachments, `.iso` files, archives with scripts inside and macro-enabled Office files are the usual suspects.
+
+### 5. Scope it: who else got it, and who clicked?
+
+One report usually means many recipients. In Defender, `EmailEvents` answers who received it:
+
+```kql
+EmailEvents
+| where Timestamp > ago(7d)
+| where SenderFromAddress =~ "ap@contoso-payments.example"
+    or Subject has "INV-20931"
+| project Timestamp, RecipientEmailAddress, SenderFromAddress, Subject,
+          DeliveryAction, DeliveryLocation, NetworkMessageId
+```
+
+`UrlClickEvents` answers the question that actually matters:
+
+```kql
+UrlClickEvents
+| where Timestamp > ago(7d)
+| where Url has "login-billing.example"
+| project Timestamp, AccountUpn, Url, ActionType, IsClickedThrough
+```
+
+If someone clicked through to a credential harvester, check their sign-ins straight after:
+
+```kql
+SigninLogs
+| where TimeGenerated > ago(2d)
+| where UserPrincipalName =~ "user@yourcompany.example"
+| project TimeGenerated, IPAddress, Location = tostring(LocationDetails.countryOrRegion),
+          AppDisplayName, ResultType, UserAgent
+| order by TimeGenerated desc
+```
+
+A successful sign-in from a new country or an unusual user agent shortly after the click turns this into an account compromise.
+
+### 6. Respond
+
+Depending on what you found, and what your playbook allows at your level:
+
+- **Remove the email** from every mailbox that received it. In Defender, Threat Explorer can soft-delete it across the tenant.
+- **Block the sender, domain and URLs** in the Tenant Allow/Block List or your mail gateway.
+- **If credentials were entered:** reset the password, revoke sessions and check MFA methods for anything newly added.
+
+```powershell
+# Microsoft Graph PowerShell: sign the user out everywhere
+Revoke-MgUserSignInSession -UserId "user@yourcompany.example"
+```
+
+- **Check the mailbox for persistence:** new inbox rules that forward or hide mail are a common follow-up.
+- **Tell the reporter what happened.** People who report phishing and never hear back stop reporting.
+
+### 7. Close it properly
+
+The case should answer, without anyone asking: what was it, who got it, who clicked, who entered anything, what was removed or blocked, and what's still open. Add the indicators (sender, domains, URLs, hashes) as a defanged list so the next analyst can search for them. If the same campaign keeps coming back, suggest a detection or mail-filter improvement rather than closing another ticket.
+
+## Case notes that someone else can pick up
+
+Write every case as if the next shift has to finish it without asking you anything:
+
+```text
+Alert:       rule name, severity, time (UTC)
+Entities:    user / host / IP / hash
+Summary:     one or two plain sentences
+Timeline:    key events in order, with times
+Evidence:    queries run, what they returned, enrichment links
+Assessment:  true positive / benign true positive / false positive, and why
+Actions:     what was done (contain, reset, block) and by whom
+Next steps:  escalated to whom, what's still open
+```
+
+"Closed, false positive" isn't a case note. "Closed, false positive: backup job `nightly-sync` renames files every night at 02:00, confirmed with the change ticket, exclusion requested" is.
+
+## When to escalate
+
+Follow the playbook, and escalate early when:
+
+- compromise is confirmed, or very likely
+- a privileged account or a critical server is involved
+- there are signs of data leaving the network
+- the same activity shows up on more than one host
+- the situation isn't covered by any playbook
+
+A clear partial picture handed over early is worth more than a perfect one an hour late. Nobody has ever been told off for escalating a well-documented maybe.
+
+## A note on AI in the SOC
+
+AI summaries and assistants speed up reading long alerts and drafting case notes. Treat them like a colleague's first impression: useful, quick, and checked against the raw logs before anything goes into a case. If it says "this IP is known malicious", find the source that says so.
+
+## Advice before you take it
+
+- Practise reading raw logs, not just dashboards. Being able to read a Windows event or an `auth.log` line without a tool is a big advantage.
+- Write a few case notes for practice alerts and read them back a day later. If they don't make sense to you then, they won't to anyone else.
+- Learn the event ID and logon type tables above until you don't need them.
+
+## After you pass
+
+The routine only becomes yours by using it. Run the six questions on every alert for a few weeks, even the obvious ones, until you stop thinking about the order.
