@@ -125,36 +125,33 @@ test.describe('field notes', () => {
     const h1 = (await page.getByRole('heading', { level: 1 }).boundingBox())?.y ?? 0
     expect(h1).toBeGreaterThan((await header.boundingBox())?.height ?? Infinity)
 
-    // Instant for reduced motion (the suite's default), a slide for everyone else.
-    await expect(header).toHaveCSS('transition-property', 'none')
     await page.emulateMedia({ reducedMotion: 'no-preference' })
-    await expect(header).toHaveCSS('transition-property', /(^|, )translate(,|$)/)
+    const height = (await header.boundingBox())?.height ?? 0
+    const scrollBy = async (dy: number) => {
+      // Instant, and read back within a few frames: the header settles ~140ms after scrolling stops.
+      await page.evaluate((d) => window.scrollBy({ top: d, behavior: 'instant' }), dy)
+      await page.waitForTimeout(40)
+    }
 
-    await page.mouse.wheel(0, 1200)
-    await expect.poll(headerTop).toBeLessThan(-50)
-
-    // While it's away, the solid top cover stays: full width, from above the viewport (behind
-    // Safari's status bar and top address bar) to 12px into it, so it's more than 10px thick on
-    // screen; and the reading progress is its own line at the top, not part of the header.
-    const cover = await page.getByTestId('top-cover').boundingBox()
-    expect(cover).toMatchObject({ x: 0, width: page.viewportSize()?.width })
-    expect(cover?.y).toBeLessThan(0)
-    expect((cover?.y ?? 0) + (cover?.height ?? 0)).toBe(12)
-    await expect(page.getByTestId('top-cover')).toHaveCSS('background-color', 'rgb(11, 13, 12)')
-    // It doesn't make the page scroll further up than its top.
-    await page.mouse.wheel(0, -100000)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
-    await page.mouse.wheel(0, 1200)
-    await expect.poll(headerTop).toBeLessThan(-50)
+    // Quick return: scrolling down takes it away with the page...
+    await scrollBy(1000)
+    await expect.poll(headerTop).toBeCloseTo(-height, 0)
+    // ...and the reading progress is its own line at the top, not part of the header.
     expect((await page.getByTestId('reading-progress').boundingBox())?.y).toBe(0)
 
-    // A small nudge back up doesn't bring it back; a real scroll up does.
-    await page.mouse.wheel(0, -10)
-    await page.waitForTimeout(400)
-    expect(await headerTop()).toBeLessThan(-50)
-    await page.mouse.wheel(0, -300)
-    await expect.poll(headerTop).toBe(0)
+    // Scrolling back up brings it back in step with the page; when scrolling stops part-way it
+    // settles: a small nudge leaves it mostly hidden, so it hides again...
+    await scrollBy(-20)
+    await expect.poll(headerTop, { timeout: 2000 }).toBeCloseTo(-height, 0)
+    // ...a longer scroll up leaves it mostly shown, so it comes all the way back.
+    await scrollBy(-(height - 10))
+    await expect.poll(headerTop, { timeout: 2000 }).toBe(0)
     await expect(page.getByTestId('reading-progress')).toBeInViewport()
+
+    // Back at the very top it's always fully shown.
+    await scrollBy(600)
+    await scrollBy(-100000)
+    await expect.poll(headerTop, { timeout: 2000 }).toBe(0)
   })
 
   test('phone menu is a full-screen sheet under the header', async ({ page, isMobile }) => {

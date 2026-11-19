@@ -6,8 +6,11 @@ import type { Note } from './notes'
 
 type TocProps = { toc: Note['toc']; activeId: string | null }
 
-/** Standard easing for things that open and close (fast start, gentle settle). */
-const EASE = 'ease-[cubic-bezier(0.2,0,0,1)]'
+/**
+ * iOS-style sheet curve: a quick start and a long, soft settle, so the panel glides rather than
+ * snaps. Used for the height, the chevron and the items, so they move as one.
+ */
+const EASE = 'ease-[cubic-bezier(0.32,0.72,0,1)]'
 
 /** Sticky "On this page" sidebar for wide screens, with the current section highlighted. */
 export function TocSidebar({ toc, activeId }: TocProps) {
@@ -79,7 +82,7 @@ export function TocDisclosure({ toc }: { toc: Note['toc'] }) {
       if (e.target === panel) go()
     }
     panel.addEventListener('transitionend', onEnd)
-    window.setTimeout(go, 450)
+    window.setTimeout(go, 600)
   }
 
   return (
@@ -95,33 +98,47 @@ export function TocDisclosure({ toc }: { toc: Note['toc'] }) {
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            'size-4 transition-[rotate] duration-300 motion-reduce:transition-none',
+            'size-4 transition-[rotate] duration-[450ms] motion-reduce:transition-none',
             EASE,
             open && 'rotate-180',
           )}
         />
       </button>
+      {/*
+        Height glides over 450ms. The contents fade in a beat after the panel starts opening (so
+        text isn't squashed into a sliver), and fade out quickly when closing (so the panel never
+        shrinks over visible text).
+      */}
       <div
         ref={panelRef}
         id={panelId}
         inert={!open}
         className={cn(
-          'grid transition-[grid-template-rows,opacity] duration-300 motion-reduce:transition-none',
+          'grid transition-[grid-template-rows] duration-[450ms] motion-reduce:transition-none',
           EASE,
-          open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
       >
         <div className="min-h-0 overflow-hidden">
-          <nav aria-label="On this page" className="border-t border-line px-4 py-3">
+          <nav
+            aria-label="On this page"
+            className={cn(
+              'border-t border-line px-4 py-3 transition-opacity motion-reduce:transition-none',
+              open
+                ? 'opacity-100 delay-100 duration-300 ease-out'
+                : 'opacity-0 duration-150 ease-in',
+            )}
+          >
             <ol className="space-y-1">
               {toc.map((item, i) => (
                 <li
                   key={item.id}
-                  // Items settle down into place as the panel opens.
+                  // Items settle into place with the panel, each a few ms after the one above.
+                  style={{ transitionDelay: open ? `${60 + i * 18}ms` : '0ms' }}
                   className={cn(
-                    'transition-[translate] duration-300 motion-reduce:transition-none',
+                    'transition-[translate] duration-[450ms] motion-reduce:transition-none',
                     EASE,
-                    open ? 'translate-y-0' : '-translate-y-1',
+                    open ? 'translate-y-0' : '-translate-y-1.5',
                   )}
                 >
                   <a

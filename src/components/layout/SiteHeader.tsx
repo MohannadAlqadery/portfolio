@@ -6,7 +6,7 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
-import { useHideOnScroll } from '@/hooks/useHideOnScroll'
+import { useQuickReturn } from '@/hooks/useQuickReturn'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
@@ -29,7 +29,8 @@ export function SiteHeader() {
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
   const onNote = matchRoute(pathname).name === 'note'
-  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
+  const headerRef = useRef<HTMLElement>(null)
+  const revealHeader = useQuickReturn(headerRef, !menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
@@ -51,24 +52,9 @@ export function SiteHeader() {
 
   return (
     <>
-      {/*
-        Top cover (phones and tablets). With Safari 26's address bar at the top, `top: 0` sits
-        below the address bar while the page itself is still drawn behind it and the clock, and
-        Safari colours that area from the first pinned element ~4px below the top of the screen
-        (ignoring ones 10px thick or less). So this solid block starts a full screen above the
-        viewport and ends 12px into it: it fills the area behind the status bar and address bar
-        with the site's colour, gives Safari that colour to paint with, and the header slides
-        underneath it, never through Safari's bar. It never moves. Elsewhere (Chrome, Android,
-        bottom address bar) only the 12px band below the status bar is on screen.
-      */}
-      <div
-        aria-hidden="true"
-        data-testid="top-cover"
-        className="pointer-events-none fixed inset-x-0 -top-[100lvh] z-50 h-[calc(100lvh+env(safe-area-inset-top)+0.75rem)] bg-canvas xl:hidden"
-      />
       {onNote ? (
         // Reading progress on note pages: its own fixed line at the top edge, independent of the
-        // header, which slides underneath it. Driven by a CSS scroll timeline (no JS).
+        // header, which moves underneath it. Driven by a CSS scroll timeline (no JS).
         <div
           aria-hidden="true"
           data-testid="reading-progress"
@@ -76,21 +62,15 @@ export function SiteHeader() {
         />
       ) : null}
       <header
+        ref={headerRef}
         onFocusCapture={revealHeader}
         className={cn(
-          // position: fixed (not sticky): Safari 26 only paints the area behind its status bar and
-          // toolbar with a header's colour when the header is fixed to the top edge. Top padding
-          // clears the status bar / Dynamic Island when the page runs edge to edge.
-          // Phones and tablets: solid, slides away while reading and back on scroll up, in step
-          // with Safari's own toolbar. Hiding is a touch quicker than showing.
+          // Fixed to the top with a solid background; top padding clears the status bar / Island
+          // when the site runs edge to edge (home-screen app, or Safari with its bar at the bottom).
+          // Phones and tablets: a "quick return" header (see useQuickReturn) that scrolls away
+          // with the page and returns as soon as you scroll back up, like the browser's own bar.
           // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
-          // Tailwind's translate-* utilities set the `translate` property, so that's what animates.
-          // Motion: returns over 450ms with a long, soft deceleration (ease-out-quint) so it eases
-          // into place; leaves over 300ms with an accelerating curve (Material's "emphasized
-          // accelerate"), quick but not abrupt. Instant for Reduce Motion.
-          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
-          headerHidden &&
-            'max-xl:-translate-y-full max-xl:duration-300 max-xl:ease-[cubic-bezier(0.3,0,0.8,0.15)]',
+          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
