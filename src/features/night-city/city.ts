@@ -1,50 +1,46 @@
 /**
- * Night-shift city: Abu Dhabi's skyline at night, where every ordinary building is a host on the
- * network and a few real landmarks make the place recognisable. Pure, deterministic generation
- * (seeded), so the same width always draws the same city and the layout is unit-testable.
+ * Night-shift city: an Abu Dhabi-style skyline at night along the Corniche, where every building
+ * is a host on the network. No real landmarks: the place comes through in the shapes (slim glass
+ * towers with pyramid crowns, needle spires and setbacks, low-rise blocks between them), the date
+ * palms along the promenade and the water in front.
  *
- * Landmarks are scenery only: they never raise alerts or open a host card, so the site never
- * suggests that a real organisation or place had a security incident.
+ * Pure, deterministic generation (seeded), so the same size always draws the same city and the
+ * layout can be unit-tested without a canvas.
  */
 
 export type Window = { col: number; row: number }
+export type Shape = 'block' | 'rounded' | 'crown' | 'spire' | 'setback'
 
 export type Building = {
   /** Leftmost column (inclusive). */
   x: number
   /** Width in columns. */
   w: number
-  /** Height in rows, roof included. */
+  /** Height in rows, top of the outline included. */
   h: number
-  /** Row of the topmost line of the building. */
+  /** Row of the topmost line of the outline. */
   roof: number
-  /** Ordinary buildings: the host's name and role. Empty for landmarks. */
+  shape: Shape
+  /** Outline, rows top to bottom, each exactly `w` wide; spaces are see-through. */
+  sprite: string[]
   host: string
   role: string
-  /** Generic towers carry an antenna with an aviation light. */
-  tower: boolean
-  roofStyle: 'flat' | 'round'
-  /** Landmark name: scenery, not a host. */
-  landmark?: string
-  /** Hand-drawn outline (rows top to bottom, each `w` wide; spaces are see-through). */
-  sprite?: readonly string[]
-  /** Drawn brighter (lit at night). */
-  bright?: boolean
   windows: Window[]
+  /** Aviation light on tall towers. */
+  light?: Window
 }
 
 export type Star = { col: number; row: number; phase: number }
-export type Label = { text: string; col: number }
 
 export type City = {
   cols: number
   rows: number
-  /** Last row buildings stand on; rows below it are the Corniche's water. */
+  /** Last row buildings stand on; the rows below are the Corniche's water. */
   ground: number
   buildings: Building[]
+  /** Date palms along the promenade: the centre column of each (3 wide, 3 tall). */
+  palms: number[]
   stars: Star[]
-  /** Landmark names, centred under each landmark at the waterline. */
-  labels: Label[]
 }
 
 /** Small, fast, seedable PRNG (mulberry32). Returns floats in [0, 1). */
@@ -59,6 +55,9 @@ export function seeded(seed: number): () => number {
   }
 }
 
+/** A date palm, 3 wide and 3 tall, standing on the promenade. */
+export const PALM = ['╲│╱', ' │ ', ' │ '] as const
+
 const WORKSTATION_ROLES = ['Finance', 'HR', 'Engineering', 'Sales', 'Legal', 'Front desk']
 const SERVER_ROLES = [
   'Domain controller',
@@ -68,232 +67,152 @@ const SERVER_ROLES = [
   'Web app',
 ]
 
-/** Aldar HQ: the round, coin-shaped tower, on its podium. */
-const ALDAR = [
-  '   ╭───╮   ',
-  ' ╭╯     ╰╮ ',
-  '│         │',
-  '│         │',
-  ' ╰╮     ╭╯ ',
-  '   ╰─┬─╯   ',
-  '  ┌──┴──┐  ',
-  '  │     │  ',
-] as const
-const ALDAR_WINDOWS: Window[] = [
-  { col: 4, row: 1 },
-  { col: 6, row: 1 },
-  ...[2, 4, 6, 8].flatMap((col) => [
-    { col, row: 2 },
-    { col, row: 3 },
-  ]),
-  { col: 4, row: 4 },
-  { col: 6, row: 4 },
-  { col: 4, row: 7 },
-  { col: 6, row: 7 },
-]
+type Outline = { sprite: string[]; windows: Window[]; light?: Window }
 
-/** Sheikh Zayed Grand Mosque: four minarets, the main dome and its smaller domes, the arcade. */
-const MOSQUE = [
-  ' ▴             ▴ ',
-  ' │      ▴      │ ',
-  ' │     ╭─╮     │ ',
-  ' │   ╭─╯ ╰─╮   │ ',
-  ' │ ╭╮│     │╭╮ │ ',
-  ' │┌┴┴┴─────┴┴┴┐│ ',
-  ' ││           ││ ',
-  '─┴┴───────────┴┴─',
-] as const
-const MOSQUE_WINDOWS: Window[] = [
-  { col: 7, row: 4 },
-  { col: 9, row: 4 },
-  ...[4, 6, 8, 10, 12].map((col) => ({ col, row: 6 })),
-]
+const blankRow = (w: number) => Array.from({ length: w }, () => ' ')
+const wall = (w: number, inset = 0) => {
+  const r = blankRow(w)
+  r[inset] = '│'
+  r[w - 1 - inset] = '│'
+  return r
+}
+const lid = (w: number, inset = 0, round = false) => {
+  const r = blankRow(w)
+  for (let c = inset + 1; c < w - 1 - inset; c++) r[c] = '─'
+  r[inset] = round ? '╭' : '┌'
+  r[w - 1 - inset] = round ? '╮' : '┐'
+  return r
+}
 
-type Landmark = { name: string; width: number; build: (x: number) => Omit<Building, 'roof'>[] }
+/** Windows on every other row and column between the walls, starting `from` rows down. */
+function windowsIn(rows: string[][], from: number): Window[] {
+  const out: Window[] = []
+  for (let r = from; r < rows.length; r += 2) {
+    const line = rows[r]
+    if (!line) continue
+    const left = line.indexOf('│')
+    const right = line.lastIndexOf('│')
+    if (left < 0 || right - left < 2) continue
+    for (let c = left + 1; c < right; c += 2) out.push({ col: c, row: r })
+  }
+  return out
+}
 
-function landmarks(
-  maxH: number,
-  size: 'wide' | 'phone' | 'narrow',
-): { at: number; landmark: Landmark }[] {
-  const scenery = { host: '', role: '', tower: false } as const
-  const etihad: Landmark = {
-    name: 'Etihad Towers',
-    width: 11,
-    // Three slim towers with rounded tops, stepped heights.
-    build: (x) =>
-      [0.8, 0.95, 0.86].map((share, i) => {
-        const h = Math.max(6, Math.round(maxH * share))
-        return {
-          ...scenery,
-          x: x + i * 4,
-          w: 3,
-          h,
-          roofStyle: 'round' as const,
-          landmark: 'Etihad Towers',
-          windows: Array.from({ length: Math.floor((h - 2) / 2) }, (_, k) => ({
-            col: 1,
-            row: 2 + k * 2,
-          })),
-        }
-      }),
+function outline(shape: Shape, w: number, h: number): Outline {
+  const rows: string[][] = []
+  let first = 2
+  let light: Window | undefined
+
+  if (shape === 'crown') {
+    // Pyramid crown on a slim glass tower.
+    const peak = w / 2 - 1
+    for (let i = 0; i < peak; i++) {
+      const r = blankRow(w)
+      r[peak - i] = '╱'
+      r[peak + 1 + i] = '╲'
+      rows.push(r)
+    }
+    rows.push(lid(w))
+    first = rows.length + 1
+    light = { col: peak, row: -1 }
+  } else if (shape === 'spire') {
+    // Needle spire above a flat top.
+    const mid = Math.floor(w / 2)
+    for (let i = 0; i < 2; i++) {
+      const r = blankRow(w)
+      r[mid] = '│'
+      rows.push(r)
+    }
+    rows.push(lid(w))
+    first = rows.length + 1
+    light = { col: mid, row: -1 }
+  } else if (shape === 'setback') {
+    // A narrower upper block stepped back from the base.
+    const upper = Math.max(2, Math.round(h * 0.38))
+    rows.push(lid(w, 1))
+    for (let i = 1; i < upper; i++) rows.push(wall(w, 1))
+    const step = blankRow(w)
+    step[0] = '┌'
+    step[1] = '┘'
+    step[w - 2] = '└'
+    step[w - 1] = '┐'
+    rows.push(step)
+    light = { col: Math.floor(w / 2), row: -1 }
+  } else {
+    rows.push(lid(w, 0, shape === 'rounded'))
   }
-  const adnoc: Landmark = {
-    name: 'ADNOC HQ',
-    width: 5,
-    // The tallest, slimmest tower, lit floor by floor.
-    build: (x) => [
-      {
-        ...scenery,
-        x,
-        w: 5,
-        h: maxH,
-        roofStyle: 'flat' as const,
-        landmark: 'ADNOC HQ',
-        windows: Array.from({ length: maxH - 2 }, (_, k) => [
-          { col: 1, row: 1 + k },
-          { col: 3, row: 1 + k },
-        ]).flat(),
-      },
-    ],
-  }
-  const aldar: Landmark = {
-    name: 'Aldar HQ',
-    width: ALDAR[0].length,
-    build: (x) => [
-      {
-        ...scenery,
-        x,
-        w: ALDAR[0].length,
-        h: ALDAR.length,
-        roofStyle: 'flat' as const,
-        landmark: 'Aldar HQ',
-        sprite: ALDAR,
-        windows: ALDAR_WINDOWS,
-      },
-    ],
-  }
-  const mosque: Landmark = {
-    name: 'Grand Mosque',
-    width: MOSQUE[0].length,
-    build: (x) => [
-      {
-        ...scenery,
-        x,
-        w: MOSQUE[0].length,
-        h: MOSQUE.length,
-        roofStyle: 'flat' as const,
-        landmark: 'Grand Mosque',
-        sprite: MOSQUE,
-        bright: true,
-        windows: MOSQUE_WINDOWS,
-      },
-    ],
-  }
-  if (size === 'wide') {
-    return [
-      { at: 0.12, landmark: etihad },
-      { at: 0.42, landmark: adnoc },
-      { at: 0.63, landmark: aldar },
-      { at: 0.86, landmark: mosque },
-    ]
-  }
-  if (size === 'phone') {
-    return [
-      { at: 0.17, landmark: etihad },
-      { at: 0.5, landmark: adnoc },
-      { at: 0.8, landmark: aldar },
-    ]
-  }
-  // Very narrow (small phones): two landmarks at the edges, hosts in between.
-  return [
-    { at: 0.14, landmark: etihad },
-    { at: 0.86, landmark: aldar },
-  ]
+  while (rows.length < h) rows.push(wall(w))
+
+  const windows = windowsIn(rows, first).filter((win) => rows[win.row]?.[win.col] === ' ')
+  return { sprite: rows.map((r) => r.join('')), windows, ...(light ? { light } : {}) }
 }
 
 /**
- * Builds a skyline that fills `cols` × `rows`: landmarks at fixed positions, ordinary buildings
- * (hosts) in between, water along the bottom, and sky above with room for antennas and markers.
+ * Builds a skyline that fills `cols` × `rows`: buildings shoulder to shoulder (sometimes an alley)
+ * standing on the promenade, palms in front, water along the bottom and sky above with room for
+ * spires, lights and alert markers.
  */
 export function generateCity(cols: number, rows: number, seed = 2608): City {
   const rand = seeded(seed + cols * 31 + rows)
   const pick = <T>(list: readonly T[]): T => list[Math.floor(rand() * list.length)] as T
-  const water = rows >= 15 ? 2 : 1
+  const water = rows >= 18 ? 3 : 2
   const ground = rows - water - 1
-  const maxH = Math.max(ground + 1 - 3, 4)
+  const maxH = Math.max(ground + 1 - 3, 5)
   const narrow = cols < 80
   const buildings: Building[] = []
-  const labels: Label[] = []
   const usedHosts = new Set<string>()
 
-  const place = (b: Omit<Building, 'roof'>) => {
-    // Relative window positions → grid positions.
-    const roof = ground + 1 - b.h
-    buildings.push({
-      ...b,
-      roof,
-      windows: b.windows.map((w) => ({ col: b.x + w.col, row: roof + w.row })),
-    })
-  }
+  let x = rand() < 0.5 ? 1 : 0
+  while (x <= cols - 3) {
+    let w = Math.min(narrow ? 3 + Math.floor(rand() * 4) : 4 + Math.floor(rand() * 5), cols - x)
+    if (cols - x - w > 0 && cols - x - w < 3) w = cols - x
 
-  const block = (x: number, w: number) => {
-    const tower = rand() < 0.16 && w >= 5
-    const share = tower ? 0.62 + rand() * 0.25 : 0.25 + rand() * 0.4
-    const h = Math.max(4, Math.min(maxH - 1, Math.round(maxH * share)))
-    const windows: Window[] = []
-    for (let row = 2; row <= h - 1; row += 2) {
-      for (let col = 1; col <= w - 2; col += 2) windows.push({ col, row })
+    // About a third are tall towers, as along the Corniche; the rest mid- and low-rise.
+    const tall = rand() < 0.36
+    const share = tall ? 0.68 + rand() * 0.32 : 0.28 + rand() * 0.36
+    const h = Math.max(4, Math.min(maxH, Math.round(maxH * share)))
+
+    let shape: Shape = rand() < 0.3 ? 'rounded' : 'block'
+    if (tall) {
+      const options: Shape[] = ['spire', 'rounded', 'block']
+      if (w % 2 === 0 && w >= 4) options.push('crown', 'crown')
+      if (w >= 5) options.push('setback', 'setback')
+      shape = pick(options)
     }
+
+    const { sprite, windows, light } = outline(shape, w, h)
+    const roof = ground + 1 - h
+
     let host: string
     do {
       const n = Math.floor(rand() * 9000) + 1000
-      host = tower ? `SRV-ADH-${n.toString().slice(0, 2)}` : `WS-ADH-${n}`
+      host = tall ? `SRV-ADH-${n.toString().slice(0, 2)}` : `WS-ADH-${n}`
     } while (usedHosts.has(host))
     usedHosts.add(host)
-    place({
+
+    buildings.push({
       x,
       w,
       h,
+      roof,
+      shape,
+      sprite,
       host,
-      role: tower ? pick(SERVER_ROLES) : pick(WORKSTATION_ROLES),
-      tower,
-      roofStyle: 'flat',
-      windows,
+      role: tall ? pick(SERVER_ROLES) : pick(WORKSTATION_ROLES),
+      windows: windows.map((win) => ({ col: x + win.col, row: roof + win.row })),
+      ...(tall && light ? { light: { col: x + light.col, row: roof + light.row } } : {}),
     })
+
+    x += w + (rand() < 0.28 ? 1 : 0)
   }
 
-  /** Ordinary buildings across [from, to], mostly shoulder to shoulder, sometimes an alley. */
-  const fill = (from: number, to: number) => {
-    let x = from
-    while (to - x + 1 >= 3) {
-      const left = to - x + 1
-      let w = Math.min(narrow ? 3 + Math.floor(rand() * 4) : 4 + Math.floor(rand() * 6), left)
-      if (left - w > 0 && left - w < 3) w = left
-      block(x, w)
-      x += w + (rand() < 0.3 ? 1 : 0)
-    }
+  // Date palms along the promenade, spaced out, in front of the buildings.
+  const palms: number[] = []
+  for (let col = 2 + Math.floor(rand() * 4); col <= cols - 2; col += 8 + Math.floor(rand() * 7)) {
+    palms.push(col)
   }
 
-  let cursor = rand() < 0.5 ? 1 : 0
-  const size = cols >= 100 ? 'wide' : cols >= 52 ? 'phone' : 'narrow'
-  for (const { at, landmark } of landmarks(maxH, size)) {
-    if (landmark.width > cols - cursor) break
-    const start = Math.min(
-      Math.max(Math.round(cols * at - landmark.width / 2), cursor),
-      cols - landmark.width,
-    )
-    const parts = landmark.build(start)
-    // Too short a canvas for this landmark: leave the space to ordinary buildings.
-    if (parts.some((b) => b.h > maxH)) continue
-    fill(cursor, start - 2)
-    for (const b of parts) place(b)
-    labels.push({ text: landmark.name.toUpperCase(), col: start + landmark.width / 2 })
-    cursor = start + landmark.width + 1
-  }
-  fill(cursor, cols - 1)
-  buildings.sort((a, b) => a.x - b.x)
-
-  // A sparse sky, kept clear of rooftops.
+  // A sparse sky, kept clear of rooftops, spires and lights.
   const stars: Star[] = []
   const starCount = Math.round(cols * 0.35)
   for (let i = 0; i < starCount; i++) {
@@ -304,17 +223,16 @@ export function generateCity(cols: number, rows: number, seed = 2608): City {
     stars.push({ col, row: Math.floor(rand() * limit), phase: rand() * Math.PI * 2 })
   }
 
-  return { cols, rows, ground, buildings, stars, labels }
+  return { cols, rows, ground, buildings, palms, stars }
 }
 
 /**
- * The host under a grid cell. The tap target is generous: it includes the two rows above the roof
- * (antenna, alert marker) and the building's reflection in the water below.
- * Landmarks are scenery, so they never count.
+ * The host under a grid cell. The tap target is generous: it includes the two rows above the
+ * outline (spire, light, alert marker) and the building's reflection in the water below.
  */
 export function buildingAt(city: City, col: number, row: number): number | null {
   const index = city.buildings.findIndex(
-    (b) => !b.landmark && col >= b.x && col < b.x + b.w && row >= b.roof - 2 && row < city.rows,
+    (b) => col >= b.x && col < b.x + b.w && row >= b.roof - 2 && row < city.rows,
   )
   return index === -1 ? null : index
 }

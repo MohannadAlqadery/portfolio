@@ -53,32 +53,39 @@ test.describe('night-shift city footer', () => {
     const box = await city.boundingBox()
     if (!box) throw new Error('no city')
 
-    // Tap low down, where every column has a building, until one opens a host card.
-    // (Landmarks are scenery and don't open anything, so try a few spots.)
-    for (const fraction of [0.05, 0.25, 0.35, 0.5, 0.55, 0.75, 0.95]) {
-      await city.click({ position: { x: box.width * fraction, y: box.height - 6 } })
-      if (await page.getByRole('dialog').isVisible()) break
-    }
+    // Tap along the water (each building's reflection is part of it) until a quiet host opens;
+    // a building with an open alert opens its case instead, so skip those.
     const card = page.getByRole('dialog')
+    for (const fraction of [0.05, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95]) {
+      await city.click({ position: { x: box.width * fraction, y: box.height - 6 } })
+      if (await card.getByText('EDR').isVisible()) break
+      await page.keyboard.press('Escape')
+    }
     await expect(card).toBeVisible()
-    await expect(card.getByText(/(WS|SRV)-ADH-/)).toBeVisible()
+    await expect(card.getByText(/^(WS|SRV)-ADH-/)).toBeVisible()
+
+    // The EDR heartbeat is live: "seen Ns ago" keeps changing.
+    const seen = card.getByText(/^(\d+s ago|just now)$/)
+    const first = await seen.textContent()
+    await expect.poll(() => seen.textContent(), { timeout: 4000 }).not.toBe(first)
 
     // A tap outside closes it.
     await page.getByRole('heading', { level: 1 }).click({ force: true })
     await expect(card).toBeHidden()
   })
 
-  test('shows it is Abu Dhabi without any interaction', async ({ page }) => {
+  test('says where it is, and keeps several cases open at once', async ({ page }) => {
     await page.goto('/')
     const footer = page.locator('footer')
     await footer.scrollIntoViewIfNeeded()
     await expect(footer.getByText('Based in Abu Dhabi, UAE')).toBeVisible()
-    const base = footer.locator('dl')
-    await expect(base.getByText('Abu Dhabi, United Arab Emirates')).toBeVisible()
-    // Live local time (filled in after hydration), with the time zone.
-    await expect(base.getByText(/^\d{2}:\d{2}$/)).toBeVisible()
-    await expect(base.getByText(/GST · UTC\+4/)).toBeVisible()
-    await expect(base.getByText(/N 24\.45° · E 54\.37°/)).toBeVisible()
+    await expect(footer.getByText(/Night shift · Abu Dhabi · \d+ hosts/)).toBeVisible()
+    // The Base block is gone.
+    await expect(footer.getByText('Coordinates')).toHaveCount(0)
+
+    // Alerts and incidents keep arriving while nobody triages: the queue grows past one.
+    const triage = page.getByRole('button', { name: /Triage alert/ })
+    await expect(triage).toHaveAccessibleName(/Triage alert [2-3]$/, { timeout: 20_000 })
   })
 
   test('the cursor is a pointer over hosts and a normal arrow elsewhere', async ({

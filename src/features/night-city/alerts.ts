@@ -5,7 +5,7 @@
  */
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low'
-export type Verdict = 'escalated' | 'benign' | 'false-positive'
+export type Verdict = 'escalated' | 'contained' | 'benign' | 'false-positive'
 
 export type AlertTemplate = {
   title: string
@@ -15,6 +15,8 @@ export type AlertTemplate = {
   steps: readonly [string, string, string]
   verdict: Verdict
   outcome: string
+  /** Hosts involved: 1 for an alert, 2 or 3 for a correlated incident. */
+  hosts?: 2 | 3
 }
 
 export const alertTemplates: readonly AlertTemplate[] = [
@@ -124,10 +126,97 @@ export const alertTemplates: readonly AlertTemplate[] = [
   },
 ]
 
+/**
+ * Incidents: correlated alerts across several hosts, worked as one case. Drawn as linked
+ * buildings in the city.
+ */
+export const incidentTemplates: readonly AlertTemplate[] = [
+  {
+    title: 'Lateral movement over admin shares',
+    technique: 'T1021.002',
+    techniqueName: 'SMB/Windows Admin Shares',
+    severity: 'critical',
+    hosts: 3,
+    steps: [
+      'One admin account opened ADMIN$ on three hosts in six minutes',
+      'A PsExec service was created on each (event 7045)',
+      'The account belongs to someone on leave this week',
+    ],
+    verdict: 'escalated',
+    outcome: 'Escalated as an incident: hosts isolated, account disabled',
+  },
+  {
+    title: 'Password spraying across servers',
+    technique: 'T1110.003',
+    techniqueName: 'Password Spraying',
+    severity: 'medium',
+    hosts: 3,
+    steps: [
+      'One failed logon each for 60 accounts, all from one IP',
+      'Spread over three servers to stay under the lockout limit',
+      'No logon succeeded; the IP is now blocked',
+    ],
+    verdict: 'contained',
+    outcome: 'Contained: source blocked, targeted accounts reviewed',
+  },
+  {
+    title: 'Phishing link opened on several workstations',
+    technique: 'T1566.002',
+    techniqueName: 'Spearphishing Link',
+    severity: 'high',
+    hosts: 3,
+    steps: [
+      'The same URL was opened on three workstations within minutes',
+      'The landing page harvests Microsoft 365 credentials',
+      'One user entered a password; no sign-in has followed yet',
+    ],
+    verdict: 'escalated',
+    outcome: 'Escalated: password reset, sessions revoked, URL blocked',
+  },
+  {
+    title: 'Shadow copies deleted',
+    technique: 'T1490',
+    techniqueName: 'Inhibit System Recovery',
+    severity: 'critical',
+    hosts: 2,
+    steps: [
+      'vssadmin deleted shadow copies on two file servers',
+      'Run by a scheduled task created an hour earlier',
+      'The same task also tried to stop the backup service',
+    ],
+    verdict: 'escalated',
+    outcome: 'Escalated as a priority incident: possible ransomware staging',
+  },
+  {
+    title: 'Same tool copied to several hosts',
+    technique: 'T1570',
+    techniqueName: 'Lateral Tool Transfer',
+    severity: 'medium',
+    hosts: 3,
+    steps: [
+      'One executable copied to three hosts over SMB',
+      'Pushed by the deployment server’s service account',
+      'Matches tonight’s patch window',
+    ],
+    verdict: 'benign',
+    outcome: 'Closed as benign true positive: patch deployment',
+  },
+]
+
 export const verdictLabel: Record<Verdict, string> = {
   escalated: 'Escalated',
+  contained: 'Contained',
   benign: 'Benign',
   'false-positive': 'False positive',
+}
+
+const severityRank: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+
+/** Most urgent first: by severity, then the one waiting longest. */
+export function byUrgency<T extends { template: AlertTemplate; openedAt: number }>(a: T, b: T) {
+  return (
+    severityRank[a.template.severity] - severityRank[b.template.severity] || a.openedAt - b.openedAt
+  )
 }
 
 /** CSS custom property holding each severity's colour. */

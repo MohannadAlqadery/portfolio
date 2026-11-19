@@ -1,13 +1,15 @@
 import type { Severity } from './alerts'
-import { buildingAt, generateCity, type City } from './city'
+import { buildingAt, generateCity, PALM, type City } from './city'
 
 export type SceneColors = {
+  canvas: string
   fg: string
   muted: string
   subtle: string
   lineStrong: string
   signal: string
   signalStrong: string
+  signalWash: string
   aviation: string
   severity: Record<Severity, string>
 }
@@ -15,7 +17,7 @@ export type SceneColors = {
 type SceneOptions = {
   colors: SceneColors
   reducedMotion: boolean
-  /** Called once the skyline has finished building. */
+  /** Called once the skyline has finished rising. */
   onReady: () => void
 }
 
@@ -26,75 +28,180 @@ export type Scene = {
   /** Pause (off screen, tab hidden). */
   stop: () => void
   destroy: () => void
-  /** Building under a point in CSS pixels, relative to the canvas. */
+  /** Host under a point in CSS pixels relative to the canvas, or null. */
   pick: (x: number, y: number) => number | null
-  /** Centre of a building's roof, in CSS pixels relative to the canvas. */
+  /** Just above a building's top, in CSS pixels relative to the canvas. */
   anchor: (index: number) => { x: number; y: number }
   city: () => City
-  /** Light up a building with an alert; returns its index, or null if the city is empty. */
-  raiseAlert: (severity: Severity) => number | null
-  clearAlert: () => void
+  /**
+   * Light up `count` hosts (neighbours, for an incident) with one alert group. Returns the group
+   * id and its members; members is empty when no host is free.
+   */
+  raise: (severity: Severity, count: number) => { group: number; members: number[] }
+  clear: (group: number) => void
   select: (index: number | null) => void
-  /** Pointer column for the scanner beam (CSS px), or null to let it sweep on its own. */
-  pointer: (x: number | null) => void
+  /** Pointer position (CSS px) for the scanner and hover glow, or null when it leaves. */
+  pointer: (x: number | null, y?: number) => void
 }
 
-const FRAME_MS = 1000 / 30
 const FONT_STACK = '"Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace'
+const FLICKER_MS = 140
 
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3
 const clamp01 = (t: number) => Math.min(Math.max(t, 0), 1)
+/** Frame-rate independent approach factor for exponential smoothing. */
+const approach = (dt: number, tauMs: number) => 1 - Math.exp(-dt / tauMs)
 
 /**
- * Draws the night-shift city on a canvas, one monospace character per grid cell. Walls and roofs
- * are cached on an offscreen layer once built; each frame only redraws windows, stars, lights,
- * the scanner beam and the alert. Runs at most 30fps and only while visible. With reduced motion
- * it draws a still, fully built city and redraws only when something changes.
+ * Draws the night-shift city on a canvas, one monospace character per grid cell.
+ *
+ * Outlines and windows live on cached offscreen layers (windows are redrawn only when traffic
+ * changes, ~7 times a second); each frame composites them and draws only what moves: stars,
+ * alert pulses, incident links, aviation lights, the scanner glow, hover highlights and the
+ * water. Buildings rise pixel by pixel; every animation is time-based, so it looks the same at
+ * 60Hz and 120Hz. Runs only while visible. With reduced motion it draws a still frame on change.
  */
 export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): Scene {
   const { colors, reducedMotion, onReady } = options
   const ctx = canvas.getContext('2d')
-  const layer = document.createElement('canvas')
-  const layerCtx = layer.getContext('2d')
+  const shellLayer = document.createElement('canvas')
+  const windowLayer = document.createElement('canvas')
+  const frontLayer = document.createElement('canvas')
+  const layers = [shellLayer, windowLayer, frontLayer]
 
   let width = 0
   let height = 0
   let dpr = 1
   let cell = { w: 7, h: 15, size: 11 }
   let origin = { x: 0, y: 0 }
-  let city: City = { cols: 0, rows: 0, ground: 0, buildings: [], stars: [], labels: [] }
+  let city: City = { cols: 0, rows: 0, ground: 0, buildings: [], palms: [], stars: [] }
 
-  // Per-window state, flattened per building.
   let lit: boolean[][] = []
   let active: boolean[][] = []
+  let hover: Float32Array = new Float32Array(0)
+  let ripples: { x: number; y: number; speed: number; len: number; phase: number }[] = []
 
   let raf = 0
   let running = false
-  let lastFrame = 0
+  let lastTime = 0
+  let lastFlicker = 0
   let buildStart = -1
   let built = reducedMotion
   let buildPlan: { delay: number; duration: number }[] = []
-  let layerDirty = true
+  let windowsDirty = true
+  let staticDirty = true
 
-  let alert: { index: number; severity: Severity } | null = null
+  const alertBy = new Map<number, { severity: Severity; group: number }>()
+  const groups = new Map<number, { severity: Severity; members: number[] }>()
+  let nextGroup = 1
   let selected: number | null = null
+  let hovered: number | null = null
   let pointerX: number | null = null
-  let beamCol = -10
+  let beamX = -200
 
   const font = () => `${cell.size}px ${FONT_STACK}`
   const px = (col: number) => origin.x + col * cell.w
   const py = (row: number) => origin.y + row * cell.h
+  const groundY = () => py(city.ground + 1)
 
-  function seedWindows() {
-    lit = city.buildings.map((b) => b.windows.map(() => !!b.landmark || Math.random() < 0.45))
+  function prepare(target: CanvasRenderingContext2D) {
+    target.setTransform(dpr, 0, 0, dpr, 0, 0)
+    target.font = font()
+    target.textBaseline = 'top'
+  }
+
+  function glyph(target: CanvasRenderingContext2D, char: string, col: number, row: number) {
+    target.fillText(char, px(col), py(row))
+  }
+
+  function drawOutline(target: CanvasRenderingContext2D, index: number) {
+    const b = city.buildings[index]
+    if (!b) return
+    b.sprite.forEach((line, r) => {
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c]
+        if (char && char !== ' ') glyph(target, char, b.x + c, b.roof + r)
+      }
+    })
+  }
+
+  /** Outlines and palms: static per size, redrawn on resize. */
+  function renderStatic() {
+    const shell = shellLayer.getContext('2d')
+    const front = frontLayer.getContext('2d')
+    if (!shell || !front) return
+    for (const target of [shell, front]) {
+      prepare(target)
+      target.clearRect(0, 0, width, height)
+    }
+    shell.fillStyle = colors.subtle
+    shell.globalAlpha = 0.55
+    city.buildings.forEach((_, i) => drawOutline(shell, i))
+    shell.globalAlpha = 1
+
+    // Palms stand in front of the buildings: clear their cells first, then draw them.
+    for (const col of city.palms) {
+      PALM.forEach((line, r) => {
+        const row = city.ground - (PALM.length - 1) + r
+        for (let c = 0; c < line.length; c++) {
+          const char = line[c]
+          if (!char || char === ' ') continue
+          front.fillStyle = colors.canvas
+          front.fillRect(px(col - 1 + c), py(row), cell.w, cell.h)
+          front.fillStyle = colors.signal
+          front.globalAlpha = r === 0 ? 0.6 : 0.4
+          glyph(front, char, col - 1 + c, row)
+          front.globalAlpha = 1
+        }
+      })
+    }
+    staticDirty = false
+  }
+
+  /** Window lights: redrawn when traffic or alerts change. */
+  function renderWindows() {
+    const target = windowLayer.getContext('2d')
+    if (!target) return
+    prepare(target)
+    target.clearRect(0, 0, width, height)
+    city.buildings.forEach((b, i) => {
+      if (alertBy.has(i)) return // drawn live, pulsing
+      b.windows.forEach((win, wi) => {
+        if (lit[i]?.[wi]) {
+          target.fillStyle = active[i]?.[wi] ? colors.signal : colors.muted
+          target.globalAlpha = 0.78
+          glyph(target, '▪', win.col, win.row)
+        } else {
+          target.fillStyle = colors.lineStrong
+          target.globalAlpha = 1
+          glyph(target, '·', win.col, win.row)
+        }
+      })
+    })
+    target.globalAlpha = 1
+    windowsDirty = false
+  }
+
+  function seedState() {
+    lit = city.buildings.map((b) => b.windows.map(() => Math.random() < 0.45))
     active = city.buildings.map((b) => b.windows.map(() => Math.random() < 0.08))
+    hover = new Float32Array(city.buildings.length)
+    const waterTop = groundY() + 4
+    const waterBottom = height - cell.h * 1.1 // keep the caption row clear
+    ripples = Array.from({ length: Math.round(city.cols * 0.55) }, () => ({
+      x: Math.random() * (width + 40),
+      y: waterTop + Math.random() * Math.max(waterBottom - waterTop, 4),
+      speed: 5 + Math.random() * 14,
+      len: 5 + Math.random() * 16,
+      phase: Math.random() * Math.PI * 2,
+    }))
   }
 
   function planBuild() {
     const centre = city.cols / 2
     buildPlan = city.buildings.map((b) => {
       const distance = Math.abs(b.x + b.w / 2 - centre) / Math.max(centre, 1)
-      return { delay: distance * 650 + Math.random() * 220, duration: 520 + Math.random() * 380 }
+      return { delay: distance * 700 + Math.random() * 200, duration: 700 + Math.random() * 400 }
     })
   }
 
@@ -107,116 +214,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
     return easeOutCubic(clamp01((now - buildStart - plan.delay) / plan.duration))
   }
 
-  function glyph(target: CanvasRenderingContext2D, char: string, col: number, row: number) {
-    target.fillText(char, px(col), py(row))
-  }
-
-  /** First row of a building that's visible while it rises `shownRows` from the ground. */
-  const topRowFor = (shownRows: number) => city.ground + 1 - shownRows
-
-  /** Outline of one building, from the ground up to `shownRows`. */
-  function drawShell(target: CanvasRenderingContext2D, index: number, shownRows: number) {
-    const b = city.buildings[index]
-    if (!b) return
-    const isSelected = selected === index
-    // Landmarks read a touch brighter than ordinary buildings; the Grand Mosque glows.
-    target.fillStyle = isSelected || b.bright ? colors.fg : colors.subtle
-    target.globalAlpha = isSelected ? 0.95 : b.bright ? 0.7 : b.landmark ? 0.7 : 0.55
-    const topRow = topRowFor(shownRows)
-
-    if (b.sprite) {
-      b.sprite.forEach((line, r) => {
-        const row = b.roof + r
-        if (row < topRow) return
-        for (let c = 0; c < line.length; c++) {
-          const char = line[c]
-          if (char && char !== ' ') glyph(target, char, b.x + c, row)
-        }
-      })
-      target.globalAlpha = 1
-      return
-    }
-
-    for (let row = Math.max(topRow, b.roof + 1); row <= city.ground; row++) {
-      glyph(target, '│', b.x, row)
-      glyph(target, '│', b.x + b.w - 1, row)
-    }
-    if (topRow <= b.roof) {
-      const round = b.roofStyle === 'round'
-      glyph(target, round ? '╭' : '┌', b.x, b.roof)
-      for (let col = b.x + 1; col < b.x + b.w - 1; col++) glyph(target, '─', col, b.roof)
-      glyph(target, round ? '╮' : '┐', b.x + b.w - 1, b.roof)
-      if (b.tower) glyph(target, '│', b.x + Math.floor(b.w / 2), b.roof - 1)
-    }
-    target.globalAlpha = 1
-  }
-
-  /** The Corniche: ripples, the city's lights reflected in the water, landmark names. */
-  function drawWater(t: number, alpha: number) {
-    if (!ctx || alpha <= 0) return
-    const first = city.ground + 1
-    const labelRow = city.rows - 1 > first ? city.rows - 1 : -1
-    const labelled = new Set<number>()
-    if (labelRow >= 0) {
-      ctx.fillStyle = colors.subtle
-      ctx.globalAlpha = 0.85 * alpha
-      for (const label of city.labels) {
-        const start = Math.round(label.col - label.text.length / 2)
-        // Keep a clear cell either side, so ripples never run into the name.
-        labelled.add(start - 1)
-        labelled.add(start + label.text.length)
-        for (let i = 0; i < label.text.length; i++) {
-          const char = label.text[i]
-          if (!char || char === ' ') continue
-          labelled.add(start + i)
-          glyph(ctx, char, start + i, labelRow)
-        }
-      }
-    }
-
-    // Reflections of lit windows, shimmering on the first row of water.
-    city.buildings.forEach((b, i) => {
-      b.windows.forEach((win, wi) => {
-        if (!(lit[i]?.[wi] ?? false)) return
-        const shimmer = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2 + win.col * 0.9 + i)
-        ctx.fillStyle = b.bright ? colors.fg : colors.muted
-        ctx.globalAlpha = (0.12 + 0.2 * shimmer) * alpha
-        glyph(ctx, '╌', win.col, first)
-      })
-    })
-
-    // Slow ripples drifting along the water.
-    const drift = reducedMotion ? 0 : Math.floor(t * 1.6)
-    ctx.fillStyle = colors.subtle
-    for (let row = first; row < city.rows; row++) {
-      for (let col = 0; col < city.cols; col++) {
-        if (row === labelRow && labelled.has(col)) continue
-        if ((col * 3 + row * 5 + drift) % 11 !== 0) continue
-        ctx.globalAlpha = 0.28 * alpha
-        glyph(ctx, '~', col, row)
-      }
-    }
-    ctx.globalAlpha = 1
-  }
-
-  function renderLayer() {
-    if (!layerCtx) return
-    layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    layerCtx.clearRect(0, 0, width, height)
-    layerCtx.font = font()
-    layerCtx.textBaseline = 'top'
-    city.buildings.forEach((b, i) => drawShell(layerCtx, i, b.h))
-    layerDirty = false
-  }
-
   function flicker() {
-    // A handful of host windows change each frame: ordinary traffic. Landmarks stay lit.
+    // A few host windows change: ordinary traffic.
     const total = lit.reduce((n, list) => n + list.length, 0)
-    const changes = Math.max(1, Math.round(total * 0.004))
+    const changes = Math.max(1, Math.round(total * 0.012))
     for (let k = 0; k < changes; k++) {
       const bi = Math.floor(Math.random() * lit.length)
       const list = lit[bi]
-      if (!list?.length || city.buildings[bi]?.landmark) continue
+      if (!list?.length) continue
       const wi = Math.floor(Math.random() * list.length)
       list[wi] = !list[wi]
       if (Math.random() < 0.15) {
@@ -224,127 +229,239 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
         if (a) a[wi] = !a[wi]
       }
     }
+    windowsDirty = true
+  }
+
+  /** A building's layers, revealed from the ground up to `p` of its height (sub-pixel smooth). */
+  function drawRising(index: number, p: number) {
+    if (!ctx) return
+    const b = city.buildings[index]
+    if (!b || p <= 0) return
+    const x = Math.max(px(b.x) - 2, 0)
+    const w = Math.min(b.w * cell.w + 4, width - x)
+    const bottom = groundY()
+    const top = Math.max(bottom - p * (b.h + 2) * cell.h, 0)
+    const h = bottom - top
+    if (w <= 0 || h <= 0) return
+    for (const layer of [shellLayer, windowLayer]) {
+      ctx.drawImage(layer, x * dpr, top * dpr, w * dpr, h * dpr, x, top, w, h)
+    }
+  }
+
+  function drawWater(t: number, reveal: number) {
+    if (!ctx || reveal <= 0) return
+    const y0 = groundY()
+    const bottom = height
+    ctx.globalAlpha = reveal
+
+    // A faint green cast to the water, fading down.
+    const wash = ctx.createLinearGradient(0, y0, 0, bottom)
+    wash.addColorStop(0, colors.signalWash)
+    wash.addColorStop(1, 'transparent')
+    ctx.globalAlpha = 0.55 * reveal
+    ctx.fillStyle = wash
+    ctx.fillRect(0, y0, width, bottom - y0)
+
+    // The promenade's edge.
+    ctx.globalAlpha = reveal
+    ctx.fillStyle = colors.lineStrong
+    ctx.fillRect(0, y0, width, 1)
+
+    // Reflections: each lit window becomes a short, wobbling streak of light.
+    // Reflections stay above the caption row along the bottom.
+    const streak = Math.max((bottom - cell.h - y0 - 6) / 3 - 2, 2)
+    city.buildings.forEach((b, i) => {
+      const alerting = alertBy.get(i)
+      b.windows.forEach((win, wi) => {
+        const isLit = alerting ? true : lit[i]?.[wi]
+        if (!isLit) return
+        ctx.fillStyle = alerting
+          ? colors.severity[alerting.severity]
+          : active[i]?.[wi]
+            ? colors.signal
+            : colors.muted
+        const shimmer = reducedMotion ? 0.85 : 0.75 + 0.25 * Math.sin(t * 2.3 + win.col)
+        for (let k = 0; k < 3; k++) {
+          const wobble = reducedMotion ? 0 : Math.sin(t * 1.6 + win.col * 0.7 + k * 1.1) * 1.4
+          const w = cell.w * 0.34 * (1 - k * 0.22)
+          ctx.globalAlpha = (0.2 - k * 0.055) * shimmer * reveal
+          ctx.fillRect(
+            px(win.col) + (cell.w - w) / 2 + wobble,
+            y0 + 3 + k * (streak + 2),
+            w,
+            streak,
+          )
+        }
+      })
+    })
+
+    // Ripples drifting slowly along the water.
+    ctx.fillStyle = colors.subtle
+    for (const r of ripples) {
+      const x = reducedMotion ? r.x : ((r.x + r.speed * t) % (width + 40)) - 20
+      ctx.globalAlpha = (0.1 + 0.16 * (0.5 + 0.5 * Math.sin(t * 0.9 + r.phase))) * reveal
+      ctx.fillRect(x, r.y, r.len, 1)
+    }
+
+    // Where we are, along the waterline.
+    ctx.fillStyle = colors.subtle
+    ctx.globalAlpha = 0.8 * reveal
+    const captionY = height - cell.h + 1
+    ctx.fillText('24.45°N 54.37°E', px(1), captionY)
+    const place = 'ABU DHABI · CORNICHE'
+    ctx.fillText(place, px(city.cols - 1) - ctx.measureText(place).width, captionY)
+    ctx.globalAlpha = 1
+  }
+
+  function drawLinks(t: number) {
+    if (!ctx) return
+    for (const { severity, members } of groups.values()) {
+      if (members.length < 2) continue
+      ctx.strokeStyle = colors.severity[severity]
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 4])
+      ctx.lineDashOffset = reducedMotion ? 0 : -t * 18
+      ctx.globalAlpha = 0.75
+      ctx.beginPath()
+      for (let k = 0; k < members.length - 1; k++) {
+        const a = city.buildings[members[k] ?? -1]
+        const b = city.buildings[members[k + 1] ?? -1]
+        if (!a || !b) continue
+        const ax = px(a.x + a.w / 2)
+        const bx = px(b.x + b.w / 2)
+        const ay = py(a.roof - 1)
+        const by = py(b.roof - 1)
+        const lift = Math.min(ay, by) - cell.h * 1.5 - Math.abs(bx - ax) * 0.12
+        ctx.moveTo(ax, ay)
+        ctx.quadraticCurveTo((ax + bx) / 2, Math.max(lift, 2), bx, by)
+      }
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.globalAlpha = 1
+    }
+  }
+
+  function drawBeam(now: number, dt: number) {
+    if (!ctx || reducedMotion) return
+    const sweep = ((now / 9000) % 1) * (width + 240) - 120
+    const target = pointerX ?? sweep
+    // Snap across the wrap (it's off screen); otherwise glide.
+    if (pointerX === null && Math.abs(target - beamX) > width * 0.6) beamX = target
+    else beamX += (target - beamX) * approach(dt, pointerX === null ? 500 : 90)
+
+    const bottom = groundY()
+    const spread = cell.w * 4
+    const glow = ctx.createLinearGradient(beamX - spread, 0, beamX + spread, 0)
+    glow.addColorStop(0, 'transparent')
+    glow.addColorStop(0.5, colors.signal)
+    glow.addColorStop(1, 'transparent')
+    ctx.globalCompositeOperation = 'lighter'
+    ctx.globalAlpha = 0.13
+    ctx.fillStyle = glow
+    ctx.fillRect(beamX - spread, 0, spread * 2, bottom)
+    const core = ctx.createLinearGradient(0, 0, 0, bottom)
+    core.addColorStop(0, 'transparent')
+    core.addColorStop(1, colors.signal)
+    ctx.globalAlpha = 0.35
+    ctx.fillStyle = core
+    ctx.fillRect(beamX - 0.5, 0, 1, bottom)
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.globalAlpha = 1
   }
 
   function draw(now: number) {
     if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, width, height)
-    ctx.font = font()
-    ctx.textBaseline = 'top'
+    const dt = lastTime ? Math.min(now - lastTime, 64) : 16
+    lastTime = now
+    const t = reducedMotion ? 0 : now / 1000
 
-    const t = now / 1000
-    const settled = built || (buildStart >= 0 && now - buildStart > buildEnd())
-    if (settled && !built) built = true
+    if (!built && buildStart >= 0 && now - buildStart > buildEnd()) built = true
+    if (staticDirty) renderStatic()
+    if (windowsDirty) renderWindows()
+
+    prepare(ctx)
+    ctx.clearRect(0, 0, width, height)
+    const reveal = built ? 1 : clamp01((now - buildStart - buildEnd() * 0.55) / 700)
 
     // Sky.
-    const skyAlpha = built ? 1 : clamp01((now - buildStart - buildEnd() * 0.6) / 600)
-    if (skyAlpha > 0) {
-      ctx.fillStyle = colors.subtle
-      for (const star of city.stars) {
-        const twinkle = reducedMotion
-          ? 0.35
-          : 0.2 + 0.3 * (0.5 + 0.5 * Math.sin(t * 1.3 + star.phase))
-        ctx.globalAlpha = twinkle * skyAlpha
-        glyph(ctx, '·', star.col, star.row)
-      }
-      ctx.globalAlpha = 1
+    ctx.fillStyle = colors.subtle
+    for (const star of city.stars) {
+      const twinkle = reducedMotion
+        ? 0.35
+        : 0.2 + 0.3 * (0.5 + 0.5 * Math.sin(t * 1.3 + star.phase))
+      ctx.globalAlpha = twinkle * reveal
+      glyph(ctx, '·', star.col, star.row)
     }
+    ctx.globalAlpha = 1
 
-    // Scanner beam: sweeps on its own, or follows a mouse.
-    let beam: number | null = null
-    if (!reducedMotion && built) {
-      const sweep = ((now / 9000) % 1) * (city.cols + 24) - 12
-      const target = pointerX === null ? sweep : (pointerX - origin.x) / cell.w
-      beamCol += (target - beamCol) * (pointerX === null ? 1 : 0.18)
-      beam = beamCol
-      const x = px(beam) + cell.w / 2
-      const gradient = ctx.createLinearGradient(0, 0, 0, height)
-      gradient.addColorStop(0, 'transparent')
-      gradient.addColorStop(1, colors.signal)
-      ctx.globalAlpha = 0.22
-      ctx.fillStyle = gradient
-      ctx.fillRect(x - 0.5, 0, 1, height)
-      ctx.globalAlpha = 1
-    }
-
-    // Buildings: cached shells once built, animated while rising.
+    // Buildings.
     if (built) {
-      if (layerDirty) renderLayer()
-      ctx.drawImage(layer, 0, 0, width, height)
+      ctx.drawImage(shellLayer, 0, 0, width, height)
+      ctx.drawImage(windowLayer, 0, 0, width, height)
     } else {
-      city.buildings.forEach((b, i) => {
-        const p = progress(i, now)
-        if (p > 0) drawShell(ctx, i, Math.ceil(p * b.h))
-      })
+      city.buildings.forEach((_, i) => drawRising(i, progress(i, now)))
     }
 
-    drawWater(t, skyAlpha)
-
-    const blinkOn = reducedMotion || Math.sin(t * Math.PI * 2 * 1.4) > -0.2
-
-    city.buildings.forEach((b, i) => {
-      const p = progress(i, now)
-      if (p <= 0) return
-      const topRow = topRowFor(Math.ceil(p * b.h))
-      const alerting = alert?.index === i
-      const sevColor = alert ? colors.severity[alert.severity] : colors.signal
-
-      b.windows.forEach((win, wi) => {
-        if (win.row < topRow) return
-        const isLit = lit[i]?.[wi] ?? false
-        const near = beam !== null && Math.abs(win.col - beam) < 2.5
-        if (b.landmark) {
-          // Landmarks keep their lights on, warm and steady.
-          ctx.fillStyle = b.bright ? colors.fg : colors.muted
-          ctx.globalAlpha = b.bright ? 0.8 : 0.7
-          glyph(ctx, '▪', win.col, win.row)
-        } else if (alerting) {
-          ctx.fillStyle = blinkOn ? sevColor : colors.lineStrong
-          ctx.globalAlpha = blinkOn ? 1 : 0.8
-          glyph(ctx, '▪', win.col, win.row)
-        } else if (isLit) {
-          ctx.fillStyle = near
-            ? colors.signalStrong
-            : active[i]?.[wi]
-              ? colors.signal
-              : colors.muted
-          ctx.globalAlpha = near ? 1 : 0.75
-          glyph(ctx, '▪', win.col, win.row)
-        } else {
-          ctx.fillStyle = near ? colors.signal : colors.lineStrong
-          ctx.globalAlpha = near ? 0.7 : 1
-          glyph(ctx, '·', win.col, win.row)
-        }
-      })
-      ctx.globalAlpha = 1
-
-      if (p < 1) return
-      const centre = b.x + Math.floor(b.w / 2)
-      // Aviation light on towers.
-      if (b.tower && b.roof >= 2) {
-        const on = reducedMotion || Math.sin(t * Math.PI * 2 * 0.6 + i) > 0.3
-        ctx.fillStyle = colors.aviation
-        ctx.globalAlpha = on ? 1 : 0.25
-        glyph(ctx, '•', centre, b.roof - 2)
-        ctx.globalAlpha = 1
-      }
-      // Alert marker over the roof.
-      if (alerting && b.roof >= 1) {
-        ctx.fillStyle = sevColor
-        ctx.globalAlpha = blinkOn ? 1 : 0.35
-        glyph(ctx, '▲', b.tower ? centre + 1 : centre, b.roof - 1)
-        ctx.globalAlpha = 1
-      }
+    // Hover and selection: the outline brightens smoothly.
+    city.buildings.forEach((_, i) => {
+      const goal = i === selected ? 1 : i === hovered ? 0.7 : 0
+      const level =
+        (hover[i] ?? 0) + (goal - (hover[i] ?? 0)) * (reducedMotion ? 1 : approach(dt, 140))
+      hover[i] = level
+      if (level < 0.02 || progress(i, now) < 1) return
+      ctx.fillStyle = colors.fg
+      ctx.globalAlpha = level * 0.9
+      drawOutline(ctx, i)
     })
+    ctx.globalAlpha = 1
+
+    // Alerts: windows pulse in the severity colour, with a marker overhead.
+    const pulse = reducedMotion ? 1 : 0.5 + 0.5 * Math.sin(t * Math.PI * 2 * 1.1)
+    for (const [i, { severity, group }] of alertBy) {
+      const b = city.buildings[i]
+      if (!b || progress(i, now) < 1) continue
+      ctx.fillStyle = colors.severity[severity]
+      ctx.globalAlpha = 0.45 + 0.55 * pulse
+      for (const win of b.windows) glyph(ctx, '▪', win.col, win.row)
+      const markerRow = (b.light?.row ?? b.roof) - 1
+      const incident = (groups.get(group)?.members.length ?? 1) > 1
+      ctx.globalAlpha = 0.35 + 0.65 * pulse
+      glyph(ctx, incident ? '◆' : '▲', b.x + Math.floor(b.w / 2), markerRow)
+    }
+    ctx.globalAlpha = 1
+    drawLinks(t)
+
+    // Aviation lights: a soft flash, staggered per tower.
+    ctx.fillStyle = colors.aviation
+    city.buildings.forEach((b, i) => {
+      if (!b.light || progress(i, now) < 1) return
+      const flash = reducedMotion ? 1 : Math.max(0, Math.sin(t * Math.PI * 2 * 0.55 + i * 1.7)) ** 6
+      ctx.globalAlpha = 0.2 + 0.8 * flash
+      glyph(ctx, '•', b.light.col, b.light.row)
+    })
+    ctx.globalAlpha = reveal
+    ctx.drawImage(frontLayer, 0, 0, width, height)
+    ctx.globalAlpha = 1
+
+    if (built) drawBeam(now, dt)
+    drawWater(t, reveal)
   }
 
   function frame(now: number) {
     raf = requestAnimationFrame(frame)
-    if (now - lastFrame < FRAME_MS) return
-    lastFrame = now
-    if (built) flicker()
+    if (built && now - lastFlicker > FLICKER_MS) {
+      lastFlicker = now
+      flicker()
+    }
     draw(now)
+  }
+
+  function pick(x: number, y: number): number | null {
+    return buildingAt(
+      city,
+      Math.floor((x - origin.x) / cell.w),
+      Math.floor((y - origin.y) / cell.h),
+    )
   }
 
   /** One-off redraw (reduced motion, or a change while paused). */
@@ -359,7 +476,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       width = nextWidth
       height = nextHeight
       dpr = Math.min(window.devicePixelRatio || 1, 2)
-      for (const c of [canvas, layer]) {
+      for (const c of [canvas, ...layers]) {
         c.width = Math.round(width * dpr)
         c.height = Math.round(height * dpr)
       }
@@ -371,16 +488,18 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       const rows = Math.floor(height / cell.h)
       // Centre the grid horizontally; sit it on the bottom edge.
       origin = { x: (width - cols * w) / 2, y: height - rows * cell.h }
-      const changed = cols !== city.cols || rows !== city.rows
-      if (changed) {
+      if (cols !== city.cols || rows !== city.rows) {
         city = generateCity(cols, rows)
-        seedWindows()
-        if (!built) planBuild()
-        alert = null
+        alertBy.clear()
+        groups.clear()
         selected = null
+        hovered = null
+        if (!built) planBuild()
       }
-      layerDirty = true
-      if (!running || reducedMotion) requestDraw()
+      seedState()
+      staticDirty = true
+      windowsDirty = true
+      requestDraw()
     },
     start() {
       if (running) return
@@ -388,12 +507,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       if (buildStart < 0) {
         buildStart = performance.now()
         if (!built) planBuild()
-        window.setTimeout(onReady, reducedMotion ? 0 : buildEnd() + 200)
+        window.setTimeout(onReady, reducedMotion ? 0 : buildEnd() + 150)
       }
       if (reducedMotion) {
         requestDraw()
         return
       }
+      lastTime = 0
       raf = requestAnimationFrame(frame)
     },
     stop() {
@@ -404,40 +524,56 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       running = false
       cancelAnimationFrame(raf)
     },
-    pick(x, y) {
-      const col = Math.floor((x - origin.x) / cell.w)
-      const row = Math.floor((y - origin.y) / cell.h)
-      return buildingAt(city, col, row)
-    },
+    pick,
     anchor(index) {
       const b = city.buildings[index]
       if (!b) return { x: width / 2, y: height / 2 }
-      return { x: px(b.x + b.w / 2), y: py(Math.max(b.roof - 1, 0)) }
+      return { x: px(b.x + b.w / 2), y: py(Math.max((b.light?.row ?? b.roof) - 1, 0)) }
     },
     city: () => city,
-    raiseAlert(severity) {
-      const candidates = city.buildings
+    raise(severity, count) {
+      const free = city.buildings
         .map((b, i) => ({ b, i }))
-        // Only hosts raise alerts; landmarks are scenery.
-        .filter(({ b, i }) => !b.landmark && b.windows.length >= 2 && i !== selected)
-      const choice = candidates[Math.floor(Math.random() * candidates.length)]
-      if (!choice) return null
-      alert = { index: choice.i, severity }
+        .filter(({ b, i }) => b.windows.length >= 2 && i !== selected && !alertBy.has(i))
+      const seed = free[Math.floor(Math.random() * free.length)]
+      if (!seed) return { group: 0, members: [] }
+      const centre = (b: (typeof free)[number]['b']) => b.x + b.w / 2
+      // An incident spreads to neighbours, the way lateral movement would.
+      const members = [
+        seed,
+        ...free
+          .filter((f) => f.i !== seed.i)
+          .sort(
+            (a, b) =>
+              Math.abs(centre(a.b) - centre(seed.b)) - Math.abs(centre(b.b) - centre(seed.b)),
+          )
+          .slice(0, Math.max(count - 1, 0)),
+      ]
+        .sort((a, b) => a.b.x - b.b.x)
+        .map((m) => m.i)
+      const group = nextGroup++
+      groups.set(group, { severity, members })
+      for (const i of members) alertBy.set(i, { severity, group })
+      windowsDirty = true
       requestDraw()
-      return choice.i
+      return { group, members }
     },
-    clearAlert() {
-      alert = null
+    clear(group) {
+      const g = groups.get(group)
+      if (!g) return
+      for (const i of g.members) alertBy.delete(i)
+      groups.delete(group)
+      windowsDirty = true
       requestDraw()
     },
     select(index) {
-      if (selected === index) return
       selected = index
-      layerDirty = true
       requestDraw()
     },
-    pointer(x) {
+    pointer(x, y) {
       pointerX = x
+      hovered = x === null || y === undefined ? null : pick(x, y)
+      if (reducedMotion) requestDraw()
     },
   }
 }
