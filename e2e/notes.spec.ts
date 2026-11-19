@@ -76,6 +76,38 @@ test.describe('field notes', () => {
     ).toBeInViewport()
   })
 
+  test('"On this page" opens and closes as an animated disclosure on phones', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(!isMobile, 'phones and tablets only')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/notes/ejptv2')
+    const toggle = page.getByRole('button', { name: /On this page · \d+ sections/ })
+    const panel = page.locator(`#${await toggle.getAttribute('aria-controls')}`)
+
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(panel).toHaveCSS('transition-property', /grid-template-rows/)
+    // Closed: no height and out of the tab order / accessibility tree.
+    expect((await panel.boundingBox())?.height ?? 0).toBeLessThan(1)
+    await expect(panel).toHaveAttribute('inert', '')
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(panel).not.toHaveAttribute('inert')
+    await expect.poll(async () => (await panel.boundingBox())?.height ?? 0).toBeGreaterThan(150)
+    await expect(page.getByRole('navigation', { name: 'On this page' })).toBeVisible()
+
+    // Picking a section closes the list first, then lands on the heading.
+    await page
+      .getByRole('navigation', { name: 'On this page' })
+      .getByRole('link', { name: 'The method' })
+      .click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(page).toHaveURL(/#the-method$/)
+    await expect(page.getByRole('heading', { level: 2, name: 'The method' })).toBeInViewport()
+  })
+
   test('phone header is fixed to the top and slides away while reading', async ({
     page,
     isMobile,
@@ -100,6 +132,14 @@ test.describe('field notes', () => {
 
     await page.mouse.wheel(0, 1200)
     await expect.poll(headerTop).toBeLessThan(-50)
+
+    // While it's away, the solid top-edge strip stays for Safari to sample (full width, ≥3px),
+    // and the reading progress is its own line at the top, not part of the header.
+    const edge = await page.getByTestId('top-edge').boundingBox()
+    expect(edge).toMatchObject({ x: 0, y: 0, width: page.viewportSize()?.width })
+    expect(edge?.height).toBeGreaterThanOrEqual(3)
+    await expect(page.getByTestId('top-edge')).toHaveCSS('background-color', 'rgb(11, 13, 12)')
+    expect((await page.getByTestId('reading-progress').boundingBox())?.y).toBe(0)
 
     // A small nudge back up doesn't bring it back; a real scroll up does.
     await page.mouse.wheel(0, -10)

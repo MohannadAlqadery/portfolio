@@ -51,6 +51,27 @@ export function SiteHeader() {
 
   return (
     <>
+      {/*
+        Top edge (phones and tablets). Safari 26 paints the area behind its status bar and toolbar
+        from a fixed element touching the top edge (needs ≥80% width, ≥3px height and a background
+        colour). This strip never moves, so Safari keeps the site's colour there even while the
+        header below is slid away, and the header slides under it rather than into Safari's bar.
+        Also covers the status bar / Island when the site runs edge to edge (home-screen app).
+      */}
+      <div
+        aria-hidden="true"
+        data-testid="top-edge"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[calc(env(safe-area-inset-top)+0.5rem)] bg-canvas xl:hidden"
+      />
+      {onNote ? (
+        // Reading progress on note pages: its own fixed line at the top edge, independent of the
+        // header, which slides underneath it. Driven by a CSS scroll timeline (no JS).
+        <div
+          aria-hidden="true"
+          data-testid="reading-progress"
+          className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal"
+        />
+      ) : null}
       <header
         onFocusCapture={revealHeader}
         className={cn(
@@ -67,15 +88,6 @@ export function SiteHeader() {
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
       >
-        {onNote ? (
-          // Reading progress on note pages, drawn over the header's bottom border by a CSS scroll
-          // timeline.
-          <div
-            aria-hidden="true"
-            data-testid="reading-progress"
-            className="pointer-events-none absolute inset-x-0 top-full h-0.5 scroll-progress -translate-y-px bg-signal"
-          />
-        ) : null}
         <Container className="flex h-14 items-center justify-between gap-6">
           <a
             href="/"
