@@ -76,27 +76,46 @@ test.describe('field notes', () => {
     ).toBeInViewport()
   })
 
-  test('phone header stays pinned to the top edge while reading', async ({ page, isMobile }) => {
+  test('phone header is fixed to the top and slides away while reading', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(!isMobile, 'phones and tablets only')
     await page.goto('/notes/esoc')
     const header = page.getByRole('banner')
-    const progress = page.getByTestId('reading-progress')
+    const headerTop = async () => (await header.boundingBox())?.y ?? NaN
 
-    await page.mouse.wheel(0, 1500)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(1000)
-    // Touching the top edge with a solid background is what Safari 26 tints its toolbar from.
-    const box = await header.boundingBox()
-    expect(box?.y).toBe(0)
+    // Fixed with a solid background at the top edge: what Safari 26 paints its toolbar from.
+    await expect(header).toHaveCSS('position', 'fixed')
     await expect(header).toHaveCSS('background-color', 'rgb(11, 13, 12)')
-    await expect
-      .poll(() => progress.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a))
-      .toBeGreaterThan(0)
+    expect(await headerTop()).toBe(0)
+    // Content starts below it rather than underneath it.
+    const h1 = (await page.getByRole('heading', { level: 1 }).boundingBox())?.y ?? 0
+    expect(h1).toBeGreaterThan((await header.boundingBox())?.height ?? Infinity)
+
+    // Instant for reduced motion (the suite's default), a slide for everyone else.
+    await expect(header).toHaveCSS('transition-property', 'none')
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await expect(header).toHaveCSS('transition-property', /(^|, )translate(,|$)/)
+
+    await page.mouse.wheel(0, 1200)
+    await expect.poll(headerTop).toBeLessThan(-50)
+
+    // A small nudge back up doesn't bring it back; a real scroll up does.
+    await page.mouse.wheel(0, -10)
+    await page.waitForTimeout(400)
+    expect(await headerTop()).toBeLessThan(-50)
+    await page.mouse.wheel(0, -300)
+    await expect.poll(headerTop).toBe(0)
+    await expect(page.getByTestId('reading-progress')).toBeInViewport()
   })
 
   test('phone menu is a full-screen sheet under the header', async ({ page, isMobile }) => {
     test.skip(!isMobile, 'phones and tablets only')
     await page.goto('/notes/esoc')
     await page.mouse.wheel(0, 800)
+    // The header slid away while scrolling down; scrolling up brings the menu button back.
+    await page.mouse.wheel(0, -200)
     await page.getByRole('button', { name: 'Open menu' }).click()
 
     const sheet = page.locator('[id]:has(> * > nav[aria-label="Sections"])')

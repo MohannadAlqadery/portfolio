@@ -6,6 +6,7 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
+import { useHideOnScroll } from '@/hooks/useHideOnScroll'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
@@ -28,6 +29,7 @@ export function SiteHeader() {
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
   const onNote = matchRoute(pathname).name === 'note'
+  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
@@ -50,14 +52,17 @@ export function SiteHeader() {
   return (
     <>
       <header
+        onFocusCapture={revealHeader}
         className={cn(
-          // Always pinned to the top edge. Top padding clears the status bar / Dynamic Island when
-          // the page runs edge to edge.
-          // Phones and tablets: solid and never hidden. Safari 26 tints its own toolbar from a
-          // fixed/sticky element touching the top edge, so this keeps page text from showing above
-          // it; Safari already shrinks its own bar on scroll, so ours stays put.
-          // Wide screens: translucent, and transparent over the hero until scrolled.
-          'sticky top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 xl:bg-canvas/90 xl:backdrop-blur-md',
+          // position: fixed (not sticky): Safari 26 only paints the area behind its status bar and
+          // toolbar with a header's colour when the header is fixed to the top edge. Top padding
+          // clears the status bar / Dynamic Island when the page runs edge to edge.
+          // Phones and tablets: solid, slides away while reading and back on scroll up, in step
+          // with Safari's own toolbar. Hiding is a touch quicker than showing.
+          // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
+          // Tailwind's translate-* utilities set the `translate` property, so that's what animates.
+          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
+          headerHidden && 'max-xl:-translate-y-full max-xl:duration-200',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
@@ -183,6 +188,8 @@ export function SiteHeader() {
           </div>
         </Container>
       </header>
+      {/* Holds the fixed header's space in the page flow, so content starts below it. */}
+      <div aria-hidden="true" className="h-[calc(3.5rem+1px+env(safe-area-inset-top))]" />
 
       {/*
         Rendered outside <header>: its backdrop-filter would otherwise become the containing block
