@@ -6,7 +6,6 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
-import { useHideOnScroll } from '@/hooks/useHideOnScroll'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
@@ -29,7 +28,6 @@ export function SiteHeader() {
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
   const onNote = matchRoute(pathname).name === 'note'
-  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
@@ -51,35 +49,22 @@ export function SiteHeader() {
 
   return (
     <>
-      {/*
-        Solid strip behind the status bar / Dynamic Island. Page content never shows through it,
-        even while the header below is slid away. Zero height on devices without a top inset.
-      */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-canvas xl:hidden"
-      />
       <header
-        onFocusCapture={revealHeader}
         className={cn(
-          // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
-          // Phones and tablets: solid bar (no backdrop blur, which stutters while it moves on iOS)
-          // that slides away while reading and returns on scroll up.
-          // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
-          // Tailwind's translate-* utilities set the `translate` property, so that's what animates.
-          'sticky top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-300 ease-[var(--ease-out-quart)] motion-reduce:transition-none xl:bg-canvas/90 xl:backdrop-blur-md',
-          headerHidden &&
-            (onNote
-              ? // Leave only the progress line showing, just below the status bar / Island.
-                'max-xl:translate-y-[calc(-100%+env(safe-area-inset-top)+2px)]'
-              : 'max-xl:-translate-y-full'),
+          // Always pinned to the top edge. Top padding clears the status bar / Dynamic Island when
+          // the page runs edge to edge.
+          // Phones and tablets: solid and never hidden. Safari 26 tints its own toolbar from a
+          // fixed/sticky element touching the top edge, so this keeps page text from showing above
+          // it; Safari already shrinks its own bar on scroll, so ours stays put.
+          // Wide screens: translucent, and transparent over the hero until scrolled.
+          'sticky top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 xl:bg-canvas/90 xl:backdrop-blur-md',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
       >
         {onNote ? (
           // Reading progress on note pages, drawn over the header's bottom border by a CSS scroll
-          // timeline, so it moves with the header instead of floating over it.
+          // timeline.
           <div
             aria-hidden="true"
             data-testid="reading-progress"
