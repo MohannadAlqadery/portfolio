@@ -10,7 +10,7 @@ import { useHideOnScroll } from '@/hooks/useHideOnScroll'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
-import { navigate, usePathname } from '@/lib/router'
+import { matchRoute, navigate, usePathname } from '@/lib/router'
 import { goHome, goToSection } from '@/lib/scroll'
 import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
@@ -28,6 +28,7 @@ export function SiteHeader() {
   const modKey = useModKey()
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
+  const onNote = matchRoute(pathname).name === 'note'
   const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
@@ -58,23 +59,33 @@ export function SiteHeader() {
         aria-hidden="true"
         className="fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-canvas xl:hidden"
       />
-      {/* Reading progress, driven purely by CSS scroll timeline; sits just below the status bar. */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal/80"
-      />
       <header
         onFocusCapture={revealHeader}
         className={cn(
           // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
-          // Phones and tablets: solid bar that slides away while reading and returns on scroll up.
-          // Wide screens: always visible, transparent over the hero until scrolled.
-          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-[transform,background-color,border-color] duration-300 ease-out',
-          headerHidden && 'max-xl:-translate-y-full',
+          // Phones and tablets: solid bar (no backdrop blur, which stutters while it moves on iOS)
+          // that slides away while reading and returns on scroll up.
+          // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
+          // Tailwind's translate-* utilities set the `translate` property, so that's what animates.
+          'sticky top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-300 ease-[var(--ease-out-quart)] motion-reduce:transition-none xl:bg-canvas/90 xl:backdrop-blur-md',
+          headerHidden &&
+            (onNote
+              ? // Leave only the progress line showing, just below the status bar / Island.
+                'max-xl:translate-y-[calc(-100%+env(safe-area-inset-top)+2px)]'
+              : 'max-xl:-translate-y-full'),
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
       >
+        {onNote ? (
+          // Reading progress on note pages, drawn over the header's bottom border by a CSS scroll
+          // timeline, so it moves with the header instead of floating over it.
+          <div
+            aria-hidden="true"
+            data-testid="reading-progress"
+            className="pointer-events-none absolute inset-x-0 top-full h-0.5 scroll-progress -translate-y-px bg-signal"
+          />
+        ) : null}
         <Container className="flex h-14 items-center justify-between gap-6">
           <a
             href="/"

@@ -76,17 +76,49 @@ test.describe('field notes', () => {
     ).toBeInViewport()
   })
 
-  test('phone header hides while reading and returns on scroll up', async ({ page, isMobile }) => {
+  test('phone header slides away into its progress line and returns on scroll up', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(!isMobile, 'phones and tablets only')
     await page.goto('/notes/esoc')
     const header = page.getByRole('banner')
-    await expect(header).toBeInViewport()
+    const progress = page.getByTestId('reading-progress')
+    const headerBottom = async () => {
+      const box = await header.boundingBox()
+      return box ? box.y + box.height : -1
+    }
+
+    // No slide for people who ask for reduced motion (the suite's default)...
+    await expect(header).toHaveCSS('transition-property', 'none')
+    // ...and a real one for everyone else. Tailwind's translate-* utilities set `translate`,
+    // so that's the property that has to be transitioned.
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await expect(header).toHaveCSS('transition-property', /(^|, )translate(,|$)/)
+    expect(await headerBottom()).toBeGreaterThan(40)
 
     await page.mouse.wheel(0, 1200)
-    await expect(header).not.toBeInViewport()
+    // Only the 2px progress line is left at the top, and it has started filling.
+    await expect.poll(headerBottom).toBeLessThanOrEqual(2)
+    await expect(progress).toBeInViewport()
+    await expect
+      .poll(() => progress.evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a))
+      .toBeGreaterThan(0)
 
+    // A small nudge back up doesn't bring it back; a real scroll up does.
+    await page.mouse.wheel(0, -10)
+    await page.waitForTimeout(400)
+    expect(await headerBottom()).toBeLessThanOrEqual(2)
     await page.mouse.wheel(0, -300)
-    await expect(header).toBeInViewport()
+    await expect.poll(headerBottom).toBeGreaterThan(40)
+  })
+
+  test('reading progress only shows on note pages', async ({ page }) => {
+    await page.goto('/notes')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByTestId('reading-progress')).toHaveCount(0)
+    await page.goto('/notes/sc-200')
+    await expect(page.getByTestId('reading-progress')).toHaveCount(1)
   })
 
   test('section links on a note page go back to the homepage section', async ({
