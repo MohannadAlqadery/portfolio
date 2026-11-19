@@ -52,16 +52,19 @@ export function SiteHeader() {
   return (
     <>
       {/*
-        Top edge (phones and tablets). Safari 26 paints the area behind its status bar and toolbar
-        from a fixed element touching the top edge (needs ≥80% width, ≥3px height and a background
-        colour). This strip never moves, so Safari keeps the site's colour there even while the
-        header below is slid away, and the header slides under it rather than into Safari's bar.
-        Also covers the status bar / Island when the site runs edge to edge (home-screen app).
+        Top cover (phones and tablets). With Safari 26's address bar at the top, `top: 0` sits
+        below the address bar while the page itself is still drawn behind it and the clock, and
+        Safari colours that area from the first pinned element ~4px below the top of the screen
+        (ignoring ones 10px thick or less). So this solid block starts a full screen above the
+        viewport and ends 12px into it: it fills the area behind the status bar and address bar
+        with the site's colour, gives Safari that colour to paint with, and the header slides
+        underneath it, never through Safari's bar. It never moves. Elsewhere (Chrome, Android,
+        bottom address bar) only the 12px band below the status bar is on screen.
       */}
       <div
         aria-hidden="true"
-        data-testid="top-edge"
-        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[calc(env(safe-area-inset-top)+0.5rem)] bg-canvas xl:hidden"
+        data-testid="top-cover"
+        className="pointer-events-none fixed inset-x-0 -top-[100lvh] z-50 h-[calc(100lvh+env(safe-area-inset-top)+0.75rem)] bg-canvas xl:hidden"
       />
       {onNote ? (
         // Reading progress on note pages: its own fixed line at the top edge, independent of the
@@ -82,8 +85,12 @@ export function SiteHeader() {
           // with Safari's own toolbar. Hiding is a touch quicker than showing.
           // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
           // Tailwind's translate-* utilities set the `translate` property, so that's what animates.
-          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
-          headerHidden && 'max-xl:-translate-y-full max-xl:duration-200',
+          // Motion: returns over 450ms with a long, soft deceleration (ease-out-quint) so it eases
+          // into place; leaves over 300ms with an accelerating curve (Material's "emphasized
+          // accelerate"), quick but not abrupt. Instant for Reduce Motion.
+          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[translate,background-color,border-color] duration-450 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
+          headerHidden &&
+            'max-xl:-translate-y-full max-xl:duration-300 max-xl:ease-[cubic-bezier(0.3,0,0.8,0.15)]',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}

@@ -133,12 +133,19 @@ test.describe('field notes', () => {
     await page.mouse.wheel(0, 1200)
     await expect.poll(headerTop).toBeLessThan(-50)
 
-    // While it's away, the solid top-edge strip stays for Safari to sample (full width, ≥3px),
-    // and the reading progress is its own line at the top, not part of the header.
-    const edge = await page.getByTestId('top-edge').boundingBox()
-    expect(edge).toMatchObject({ x: 0, y: 0, width: page.viewportSize()?.width })
-    expect(edge?.height).toBeGreaterThanOrEqual(3)
-    await expect(page.getByTestId('top-edge')).toHaveCSS('background-color', 'rgb(11, 13, 12)')
+    // While it's away, the solid top cover stays: full width, from above the viewport (behind
+    // Safari's status bar and top address bar) to 12px into it, so it's more than 10px thick on
+    // screen; and the reading progress is its own line at the top, not part of the header.
+    const cover = await page.getByTestId('top-cover').boundingBox()
+    expect(cover).toMatchObject({ x: 0, width: page.viewportSize()?.width })
+    expect(cover?.y).toBeLessThan(0)
+    expect((cover?.y ?? 0) + (cover?.height ?? 0)).toBe(12)
+    await expect(page.getByTestId('top-cover')).toHaveCSS('background-color', 'rgb(11, 13, 12)')
+    // It doesn't make the page scroll further up than its top.
+    await page.mouse.wheel(0, -100000)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await page.mouse.wheel(0, 1200)
+    await expect.poll(headerTop).toBeLessThan(-50)
     expect((await page.getByTestId('reading-progress').boundingBox())?.y).toBe(0)
 
     // A small nudge back up doesn't bring it back; a real scroll up does.
