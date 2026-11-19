@@ -18,7 +18,7 @@ test.describe('night-shift city footer', () => {
     const city = page.getByTestId('night-city')
     await expect(city).toBeVisible()
     expect((await city.boundingBox())?.height ?? 0).toBeGreaterThan(150)
-    await expect(page.getByText(/Night shift · \d+ hosts/)).toBeVisible()
+    await expect(page.getByText(/Night shift · Abu Dhabi · \d+ hosts/)).toBeVisible()
 
     // An alert comes in; triage it from the keyboard-accessible button.
     const triage = page.getByRole('button', { name: /Triage alert/ })
@@ -54,7 +54,8 @@ test.describe('night-shift city footer', () => {
     if (!box) throw new Error('no city')
 
     // Tap low down, where every column has a building, until one opens a host card.
-    for (const fraction of [0.15, 0.35, 0.55, 0.75]) {
+    // (Landmarks are scenery and don't open anything, so try a few spots.)
+    for (const fraction of [0.05, 0.25, 0.35, 0.5, 0.55, 0.75, 0.95]) {
       await city.click({ position: { x: box.width * fraction, y: box.height - 6 } })
       if (await page.getByRole('dialog').isVisible()) break
     }
@@ -65,6 +66,46 @@ test.describe('night-shift city footer', () => {
     // A tap outside closes it.
     await page.getByRole('heading', { level: 1 }).click({ force: true })
     await expect(card).toBeHidden()
+  })
+
+  test('shows it is Abu Dhabi without any interaction', async ({ page }) => {
+    await page.goto('/')
+    const footer = page.locator('footer')
+    await footer.scrollIntoViewIfNeeded()
+    await expect(footer.getByText('Based in Abu Dhabi, UAE')).toBeVisible()
+    const base = footer.locator('dl')
+    await expect(base.getByText('Abu Dhabi, United Arab Emirates')).toBeVisible()
+    // Live local time (filled in after hydration), with the time zone.
+    await expect(base.getByText(/^\d{2}:\d{2}$/)).toBeVisible()
+    await expect(base.getByText(/GST · UTC\+4/)).toBeVisible()
+    await expect(base.getByText(/N 24\.45° · E 54\.37°/)).toBeVisible()
+  })
+
+  test('the cursor is a pointer over hosts and a normal arrow elsewhere', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'mouse cursors only')
+    await page.goto('/')
+    await page.locator('footer').scrollIntoViewIfNeeded()
+    const city = page.getByTestId('night-city')
+    await expect(city).toBeVisible()
+    const box = await city.boundingBox()
+    if (!box) throw new Error('no city')
+    const cursorAt = async (fx: number, y: number) => {
+      await page.mouse.move(box.x + box.width * fx, box.y + y)
+      return city.evaluate((el) => getComputedStyle(el).cursor)
+    }
+
+    // The sky at the top is never clickable.
+    expect(await cursorAt(0.5, 4)).toBe('auto')
+    // Somewhere along the bottom row is a host.
+    const cursors: string[] = []
+    for (const fx of [0.05, 0.25, 0.35, 0.5, 0.55, 0.75, 0.95]) {
+      cursors.push(await cursorAt(fx, box.height - 30))
+    }
+    expect(cursors).toContain('pointer')
+    expect(cursors).not.toContain('crosshair')
   })
 
   test('reserves its space, so the page does not shift when it appears', async ({ page }) => {

@@ -99,7 +99,7 @@ export default function NightShiftCity() {
     const resize = () => {
       const { width, height } = canvas.getBoundingClientRect()
       scene.resize(width, height)
-      setHosts(scene.city().buildings.length)
+      setHosts(scene.city().buildings.filter((b) => !b.landmark).length)
       setBox({ width: wrap.clientWidth, height: wrap.clientHeight })
     }
     const observer = new ResizeObserver(resize)
@@ -228,7 +228,12 @@ export default function NightShiftCity() {
   const onCanvasMove = (event: PointerEvent<HTMLCanvasElement>) => {
     if (event.pointerType !== 'mouse') return
     const rect = event.currentTarget.getBoundingClientRect()
-    sceneRef.current?.pointer(event.clientX - rect.left)
+    const x = event.clientX - rect.left
+    const scene = sceneRef.current
+    scene?.pointer(x)
+    // The hand cursor only over something you can click (a host), the normal arrow elsewhere.
+    const overHost = scene?.pick(x, event.clientY - rect.top) != null
+    event.currentTarget.style.cursor = overHost ? 'pointer' : ''
   }
 
   const onTriage = () => {
@@ -252,7 +257,7 @@ export default function NightShiftCity() {
             aria-hidden="true"
             className="size-1.5 animate-pulse-dot rounded-full bg-signal text-signal"
           />
-          Night shift · {hosts} hosts
+          Night shift · Abu Dhabi · {hosts} hosts
         </p>
         <div className="flex items-center gap-3">
           <p>
@@ -291,7 +296,8 @@ export default function NightShiftCity() {
         </div>
       </div>
       <p id={descriptionId} className="sr-only">
-        A skyline of Abu Dhabi at night drawn as a network, where each building is a host. When one
+        Abu Dhabi&rsquo;s skyline at night along the Corniche, with landmarks such as Etihad Towers,
+        ADNOC HQ and Aldar HQ, drawn as a network where every other building is a host. When one
         raises an alert, Triage alert opens the case and walks through how it was investigated.
       </p>
 
@@ -302,7 +308,7 @@ export default function NightShiftCity() {
         onClick={onCanvasClick}
         onPointerMove={onCanvasMove}
         onPointerLeave={() => sceneRef.current?.pointer(null)}
-        className="mt-4 min-h-0 w-full flex-1 cursor-crosshair touch-manipulation"
+        className="mt-4 min-h-0 w-full flex-1 touch-manipulation"
       />
 
       {card ? (

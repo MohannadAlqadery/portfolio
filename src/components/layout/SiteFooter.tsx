@@ -4,12 +4,14 @@ import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
 import { NightShiftCityLoader } from '@/features/night-city/NightShiftCityLoader'
+import { useHydratedNow } from '@/hooks/useNow'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail } from '@/lib/email'
 import { goToSection, scrollToTop } from '@/lib/scroll'
+import { formatClock } from '@/lib/time'
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
@@ -32,6 +34,37 @@ function IconSlot({ children, className }: { children: ReactNode; className?: st
     >
       {children}
     </span>
+  )
+}
+
+/** Where the site's owner is: city, live local time, coordinates, languages. */
+function BaseDetails() {
+  const now = useHydratedNow()
+  const rows: { term: string; detail: ReactNode }[] = [
+    { term: 'City', detail: `${site.location.city}, United Arab Emirates` },
+    {
+      term: 'Local time',
+      detail: (
+        <>
+          <time dateTime={now?.toISOString()} className="text-fg tabular-nums">
+            {now ? formatClock(now, site.location.timeZone) : '--:--'}
+          </time>{' '}
+          {site.location.timeZoneLabel} · UTC+4
+        </>
+      ),
+    },
+    { term: 'Coordinates', detail: site.location.coordinates },
+    { term: 'Languages', detail: 'Arabic · English' },
+  ]
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-2 text-sm">
+      {rows.map(({ term, detail }) => (
+        <div key={term} className="contents">
+          <dt className="label leading-5 text-fg-subtle">{term}</dt>
+          <dd className="text-fg-muted">{detail}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }
 
@@ -58,18 +91,23 @@ export function SiteFooter() {
     <footer className="border-t border-line">
       <Container className="pt-14 pb-[max(3.5rem,calc(env(safe-area-inset-bottom)+2rem))] md:pt-20 md:pb-20">
         <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-12 md:gap-8">
-          <div className="col-span-2 md:col-span-6">
+          <div className="col-span-2 md:col-span-5">
             <p className="font-display text-5xl leading-[0.95] text-fg md:text-headline">
               {firstName}
               <br />
               <em className="text-fg-muted">{rest.join(' ')}</em>
             </p>
-            <p className="mt-5 label text-fg-subtle">
-              {site.role} · {site.location.city}, {site.location.country}
+            <p className="mt-5 label text-fg-subtle">{site.role} · REACH Digital</p>
+            <p className="mt-2 flex items-center gap-2 label text-fg-subtle">
+              <span
+                aria-hidden="true"
+                className="size-1.5 animate-pulse-dot rounded-full bg-signal text-signal"
+              />
+              Based in {site.location.city}, {site.location.country}
             </p>
           </div>
 
-          <nav aria-label="Footer" className="md:col-span-3">
+          <nav aria-label="Footer" className="md:col-span-2">
             <FooterHeading>Index</FooterHeading>
             <ul className="space-y-1">
               {sections.map((section, i) => (
@@ -96,7 +134,13 @@ export function SiteFooter() {
             </ul>
           </nav>
 
-          <div className="md:col-span-3">
+          {/* Phones: full width, after Index and Elsewhere. Desktop: between them. */}
+          <div className="order-last col-span-2 md:order-none md:col-span-3">
+            <FooterHeading>Base</FooterHeading>
+            <BaseDetails />
+          </div>
+
+          <div className="md:col-span-2">
             <FooterHeading>Elsewhere</FooterHeading>
             <ul className="space-y-1.5">
               <li>

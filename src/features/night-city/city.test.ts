@@ -9,46 +9,86 @@ describe('night-shift city', () => {
   })
 
   it.each([
-    [40, 14],
+    // 320px-wide phone (the narrowest in use), then a typical phone, then wider screens.
+    [48, 14],
     [57, 16],
+    [120, 19],
     [166, 20],
   ])('fits a %i × %i grid without overlaps', (cols, rows) => {
     const city = generateCity(cols, rows)
-    expect(city.buildings.length).toBeGreaterThan(3)
+    expect(city.buildings.filter((b) => !b.landmark).length).toBeGreaterThan(3)
+    // Water along the bottom: the Corniche.
+    expect(city.ground).toBeLessThan(rows - 1)
 
     let lastRight = -1
     for (const b of city.buildings) {
-      // Inside the grid, standing on the bottom row, with sky above for antennas and markers.
+      // Inside the grid, standing on the ground row, with sky above for antennas and markers.
       expect(b.x).toBeGreaterThan(lastRight)
       expect(b.x + b.w).toBeLessThanOrEqual(cols)
-      expect(b.roof + b.h).toBe(rows)
+      expect(b.roof + b.h).toBe(city.ground + 1)
       expect(b.roof).toBeGreaterThanOrEqual(2)
       lastRight = b.x + b.w - 1
 
-      // Windows sit inside the walls and below the roof.
+      // Hand-drawn landmarks are exactly as wide and tall as their footprint.
+      for (const line of b.sprite ?? []) expect([...line]).toHaveLength(b.w)
+      expect(b.sprite?.length ?? b.h).toBe(b.h)
+
+      // Windows sit inside the outline.
       for (const w of b.windows) {
-        expect(w.col).toBeGreaterThan(b.x)
-        expect(w.col).toBeLessThan(b.x + b.w - 1)
+        expect(w.col).toBeGreaterThanOrEqual(b.x)
+        expect(w.col).toBeLessThan(b.x + b.w)
         expect(w.row).toBeGreaterThan(b.roof)
-        expect(w.row).toBeLessThan(rows)
+        expect(w.row).toBeLessThanOrEqual(city.ground)
       }
     }
 
     // Every host has its own name, and stars stay above the rooftops.
-    expect(new Set(city.buildings.map((b) => b.host)).size).toBe(city.buildings.length)
+    const hosts = city.buildings.filter((b) => !b.landmark).map((b) => b.host)
+    expect(new Set(hosts).size).toBe(hosts.length)
     for (const star of city.stars) {
-      const roof = city.buildings.find((b) => star.col >= b.x && star.col < b.x + b.w)?.roof ?? rows
+      const roof =
+        city.buildings.find((b) => star.col >= b.x && star.col < b.x + b.w)?.roof ?? city.ground + 1
       expect(star.row).toBeLessThan(roof - 2)
     }
   })
 
-  it('finds the building under a cell, including just above its roof', () => {
-    const city = generateCity(80, 18)
-    const b = city.buildings[2]
-    if (!b) throw new Error('expected buildings')
-    expect(buildingAt(city, b.x, city.rows - 1)).toBe(2)
-    expect(buildingAt(city, b.x, b.roof - 2)).toBe(2)
-    expect(buildingAt(city, b.x, b.roof - 3)).toBeNull()
+  it('shows Abu Dhabi landmarks, labelled, with the Grand Mosque on wider screens', () => {
+    const phone = generateCity(57, 16)
+    const desktop = generateCity(166, 20)
+    const names = (c: typeof phone) => [...new Set(c.buildings.flatMap((b) => b.landmark ?? []))]
+    expect(names(phone)).toEqual(['Etihad Towers', 'ADNOC HQ', 'Aldar HQ'])
+    expect(names(desktop)).toEqual(['Etihad Towers', 'ADNOC HQ', 'Aldar HQ', 'Grand Mosque'])
+    expect(desktop.labels.map((l) => l.text)).toEqual([
+      'ETIHAD TOWERS',
+      'ADNOC HQ',
+      'ALDAR HQ',
+      'GRAND MOSQUE',
+    ])
+    // Labels stay on screen and don't run into each other.
+    for (const city of [phone, desktop]) {
+      let lastEnd = -1
+      for (const label of city.labels) {
+        const start = Math.round(label.col - label.text.length / 2)
+        expect(start).toBeGreaterThan(lastEnd)
+        lastEnd = start + label.text.length
+        expect(lastEnd).toBeLessThanOrEqual(city.cols)
+      }
+    }
+  })
+
+  it('treats landmarks as scenery: only ordinary buildings are hosts you can pick', () => {
+    const city = generateCity(166, 20)
+    const landmark = city.buildings.find((b) => b.landmark)
+    const host = city.buildings.findIndex((b) => !b.landmark)
+    const hostB = city.buildings[host]
+    if (!landmark || !hostB) throw new Error('expected both')
+    expect(buildingAt(city, landmark.x + 1, city.ground)).toBeNull()
+    expect(buildingAt(city, hostB.x, city.ground)).toBe(host)
+    expect(buildingAt(city, hostB.x, hostB.roof - 2)).toBe(host)
+    expect(buildingAt(city, hostB.x, hostB.roof - 3)).toBeNull()
+    // Its reflection in the water counts too (a bigger tap target), but not off the grid.
+    expect(buildingAt(city, hostB.x, city.rows - 1)).toBe(host)
+    expect(buildingAt(city, hostB.x, city.rows)).toBeNull()
   })
 })
 

@@ -62,7 +62,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
   let dpr = 1
   let cell = { w: 7, h: 15, size: 11 }
   let origin = { x: 0, y: 0 }
-  let city: City = { cols: 0, rows: 0, buildings: [], stars: [] }
+  let city: City = { cols: 0, rows: 0, ground: 0, buildings: [], stars: [], labels: [] }
 
   // Per-window state, flattened per building.
   let lit: boolean[][] = []
@@ -86,7 +86,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
   const py = (row: number) => origin.y + row * cell.h
 
   function seedWindows() {
-    lit = city.buildings.map((b) => b.windows.map(() => Math.random() < 0.45))
+    lit = city.buildings.map((b) => b.windows.map(() => !!b.landmark || Math.random() < 0.45))
     active = city.buildings.map((b) => b.windows.map(() => Math.random() < 0.08))
   }
 
@@ -111,25 +111,92 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
     target.fillText(char, px(col), py(row))
   }
 
-  /** Walls and roofs of one building, from the bottom up to `shownRows`. */
+  /** First row of a building that's visible while it rises `shownRows` from the ground. */
+  const topRowFor = (shownRows: number) => city.ground + 1 - shownRows
+
+  /** Outline of one building, from the ground up to `shownRows`. */
   function drawShell(target: CanvasRenderingContext2D, index: number, shownRows: number) {
     const b = city.buildings[index]
     if (!b) return
     const isSelected = selected === index
-    target.fillStyle = isSelected ? colors.fg : colors.subtle
-    target.globalAlpha = isSelected ? 0.95 : 0.55
-    const topRow = city.rows - shownRows
-    for (let row = Math.max(topRow, b.roof + 1); row < city.rows; row++) {
+    // Landmarks read a touch brighter than ordinary buildings; the Grand Mosque glows.
+    target.fillStyle = isSelected || b.bright ? colors.fg : colors.subtle
+    target.globalAlpha = isSelected ? 0.95 : b.bright ? 0.7 : b.landmark ? 0.7 : 0.55
+    const topRow = topRowFor(shownRows)
+
+    if (b.sprite) {
+      b.sprite.forEach((line, r) => {
+        const row = b.roof + r
+        if (row < topRow) return
+        for (let c = 0; c < line.length; c++) {
+          const char = line[c]
+          if (char && char !== ' ') glyph(target, char, b.x + c, row)
+        }
+      })
+      target.globalAlpha = 1
+      return
+    }
+
+    for (let row = Math.max(topRow, b.roof + 1); row <= city.ground; row++) {
       glyph(target, '│', b.x, row)
       glyph(target, '│', b.x + b.w - 1, row)
     }
     if (topRow <= b.roof) {
-      glyph(target, '┌', b.x, b.roof)
+      const round = b.roofStyle === 'round'
+      glyph(target, round ? '╭' : '┌', b.x, b.roof)
       for (let col = b.x + 1; col < b.x + b.w - 1; col++) glyph(target, '─', col, b.roof)
-      glyph(target, '┐', b.x + b.w - 1, b.roof)
+      glyph(target, round ? '╮' : '┐', b.x + b.w - 1, b.roof)
       if (b.tower) glyph(target, '│', b.x + Math.floor(b.w / 2), b.roof - 1)
     }
     target.globalAlpha = 1
+  }
+
+  /** The Corniche: ripples, the city's lights reflected in the water, landmark names. */
+  function drawWater(t: number, alpha: number) {
+    if (!ctx || alpha <= 0) return
+    const first = city.ground + 1
+    const labelRow = city.rows - 1 > first ? city.rows - 1 : -1
+    const labelled = new Set<number>()
+    if (labelRow >= 0) {
+      ctx.fillStyle = colors.subtle
+      ctx.globalAlpha = 0.85 * alpha
+      for (const label of city.labels) {
+        const start = Math.round(label.col - label.text.length / 2)
+        // Keep a clear cell either side, so ripples never run into the name.
+        labelled.add(start - 1)
+        labelled.add(start + label.text.length)
+        for (let i = 0; i < label.text.length; i++) {
+          const char = label.text[i]
+          if (!char || char === ' ') continue
+          labelled.add(start + i)
+          glyph(ctx, char, start + i, labelRow)
+        }
+      }
+    }
+
+    // Reflections of lit windows, shimmering on the first row of water.
+    city.buildings.forEach((b, i) => {
+      b.windows.forEach((win, wi) => {
+        if (!(lit[i]?.[wi] ?? false)) return
+        const shimmer = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(t * 2.2 + win.col * 0.9 + i)
+        ctx.fillStyle = b.bright ? colors.fg : colors.muted
+        ctx.globalAlpha = (0.12 + 0.2 * shimmer) * alpha
+        glyph(ctx, '╌', win.col, first)
+      })
+    })
+
+    // Slow ripples drifting along the water.
+    const drift = reducedMotion ? 0 : Math.floor(t * 1.6)
+    ctx.fillStyle = colors.subtle
+    for (let row = first; row < city.rows; row++) {
+      for (let col = 0; col < city.cols; col++) {
+        if (row === labelRow && labelled.has(col)) continue
+        if ((col * 3 + row * 5 + drift) % 11 !== 0) continue
+        ctx.globalAlpha = 0.28 * alpha
+        glyph(ctx, '~', col, row)
+      }
+    }
+    ctx.globalAlpha = 1
   }
 
   function renderLayer() {
@@ -143,13 +210,13 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
   }
 
   function flicker() {
-    // A handful of windows change each frame: ordinary traffic.
+    // A handful of host windows change each frame: ordinary traffic. Landmarks stay lit.
     const total = lit.reduce((n, list) => n + list.length, 0)
     const changes = Math.max(1, Math.round(total * 0.004))
     for (let k = 0; k < changes; k++) {
       const bi = Math.floor(Math.random() * lit.length)
       const list = lit[bi]
-      if (!list?.length) continue
+      if (!list?.length || city.buildings[bi]?.landmark) continue
       const wi = Math.floor(Math.random() * list.length)
       list[wi] = !list[wi]
       if (Math.random() < 0.15) {
@@ -212,12 +279,14 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       })
     }
 
+    drawWater(t, skyAlpha)
+
     const blinkOn = reducedMotion || Math.sin(t * Math.PI * 2 * 1.4) > -0.2
 
     city.buildings.forEach((b, i) => {
       const p = progress(i, now)
       if (p <= 0) return
-      const topRow = city.rows - Math.ceil(p * b.h)
+      const topRow = topRowFor(Math.ceil(p * b.h))
       const alerting = alert?.index === i
       const sevColor = alert ? colors.severity[alert.severity] : colors.signal
 
@@ -225,7 +294,12 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
         if (win.row < topRow) return
         const isLit = lit[i]?.[wi] ?? false
         const near = beam !== null && Math.abs(win.col - beam) < 2.5
-        if (alerting) {
+        if (b.landmark) {
+          // Landmarks keep their lights on, warm and steady.
+          ctx.fillStyle = b.bright ? colors.fg : colors.muted
+          ctx.globalAlpha = b.bright ? 0.8 : 0.7
+          glyph(ctx, '▪', win.col, win.row)
+        } else if (alerting) {
           ctx.fillStyle = blinkOn ? sevColor : colors.lineStrong
           ctx.globalAlpha = blinkOn ? 1 : 0.8
           glyph(ctx, '▪', win.col, win.row)
@@ -344,7 +418,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
     raiseAlert(severity) {
       const candidates = city.buildings
         .map((b, i) => ({ b, i }))
-        .filter(({ b, i }) => b.windows.length >= 2 && i !== selected)
+        // Only hosts raise alerts; landmarks are scenery.
+        .filter(({ b, i }) => !b.landmark && b.windows.length >= 2 && i !== selected)
       const choice = candidates[Math.floor(Math.random() * candidates.length)]
       if (!choice) return null
       alert = { index: choice.i, severity }
