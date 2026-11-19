@@ -1,107 +1,160 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 
 type Options = {
   /** Only active while this media query matches (e.g. phones and tablets). */
   media?: string
-  /** Snap animation once scrolling stops. */
-  snapMs?: number
+  /** Smoothing while following the scroll (ms). Small enough to feel attached to the page. */
+  followMs?: number
+  /** Smoothing when settling in or out after scrolling stops (ms); ~3x this to finish. */
+  settleMs?: number
 }
 
-const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+type Animator = {
+  /** Ease towards `next` px hidden, with the given smoothing time constant (ms). */
+  moveTo: (next: number, ms: number) => void
+  /** Where it's heading, in px hidden. */
+  target: () => number
+  stop: () => void
+  /** The element to move. */
+  attach: (el: HTMLElement | null) => void
+}
+
+/** Eases an element's vertical offset towards a target, frame-rate independently. */
+function createAnimator(): Animator {
+  let element: HTMLElement | null = null
+  let target = 0
+  let current = 0
+  let smoothing = 95
+  let frame = 0
+  let last = 0
+
+  const write = () => {
+    const el = element
+    if (el) el.style.transform = current ? `translate3d(0, ${(-current).toFixed(2)}px, 0)` : ''
+  }
+
+  function tick(now: number) {
+    const dt = last ? Math.min(now - last, 64) : 16
+    last = now
+    const gap = target - current
+    if (Math.abs(gap) < 0.3) {
+      current = target
+      write()
+      frame = 0
+      last = 0
+      return
+    }
+    current += gap * (1 - Math.exp(-dt / smoothing))
+    write()
+    frame = requestAnimationFrame(tick)
+  }
+
+  return {
+    moveTo(next, ms) {
+      target = next
+      smoothing = ms
+      if (reducedMotion()) {
+        cancelAnimationFrame(frame)
+        frame = 0
+        current = next
+        write()
+        return
+      }
+      if (!frame) frame = requestAnimationFrame(tick)
+    },
+    target: () => target,
+    attach(el) {
+      element = el
+    },
+    stop() {
+      cancelAnimationFrame(frame)
+      frame = 0
+      last = 0
+    },
+  }
+}
 
 /**
- * "Quick return" header, the way browser toolbars behave: while the page scrolls, the header moves
- * with it pixel for pixel (so it never fights a fast flick or lags a slow one), and once scrolling
- * stops a half-shown header settles fully in or out. It is driven straight from the scroll
- * position in requestAnimationFrame, writing only `translate` on the element, so React doesn't
- * re-render on scroll. Returns `reveal()` to bring it back at once (e.g. on keyboard focus).
+ * "Quick return" header, the way browser toolbars behave: it scrolls away with the page and comes
+ * back as soon as you scroll up; if scrolling stops part-way, it settles fully in or out.
+ *
+ * All motion runs through one requestAnimationFrame loop that eases the header towards its target
+ * position (exponential smoothing, frame-rate independent). Following, settling and revealing are
+ * the same motion, so a flick, a stop or a change of direction blends instead of jumping, and it
+ * never fights a CSS transition. Only `transform` is written (GPU-composited, no layout), and
+ * React never re-renders on scroll. With Reduce Motion it moves without easing.
+ *
+ * Returns `reveal()` to bring it back (e.g. on keyboard focus).
  */
 export function useQuickReturn(
   ref: RefObject<HTMLElement | null>,
   enabled: boolean,
-  { media = '(max-width: 79.99rem)', snapMs = 320 }: Options = {},
+  { media = '(max-width: 79.99rem)', followMs = 45, settleMs = 95 }: Options = {},
 ): () => void {
-  const offset = useRef(0)
+  // One animator per header for the component's lifetime.
+  const [animator] = useState(createAnimator)
+  const moveTo = animator.moveTo
+  const target = animator.target
 
-  const apply = useCallback(
-    (next: number, animate: boolean) => {
-      const el = ref.current
-      if (!el) return
-      offset.current = next
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-      // While following the scroll there's no transition (it moves with the content); a settle
-      // animates; at rest the inline styles are cleared so the stylesheet's own transitions apply.
-      el.style.transition =
-        animate && !reduce ? `translate ${snapMs}ms ${EASE_OUT}` : next ? 'none' : ''
-      el.style.translate = next ? `0 ${-next}px` : ''
-    },
-    [ref, snapMs],
-  )
-
-  const reveal = useCallback(() => apply(0, true), [apply])
+  const reveal = useCallback(() => moveTo(0, settleMs), [moveTo, settleMs])
 
   useEffect(() => {
     const el = ref.current
+    animator.attach(el)
     // No matchMedia (e.g. some test environments): leave the header in place.
-    if (typeof window.matchMedia !== 'function') return
+    if (!el || typeof window.matchMedia !== 'function') return
     const query = window.matchMedia(media)
-    if (!el || !enabled || !query.matches) {
-      if (offset.current) apply(0, true)
-      // Re-evaluate when crossing the breakpoint.
-      const onChange = () => apply(0, false)
+
+    if (!enabled || !query.matches) {
+      moveTo(0, settleMs)
+      const onChange = () => moveTo(0, settleMs)
       query.addEventListener('change', onChange)
       return () => query.removeEventListener('change', onChange)
     }
 
-    const currentY = () => {
+    const scrollY = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight
       // Rubber-banding reports positions past either end; treat those as the end itself.
       return Math.min(Math.max(window.scrollY, 0), Math.max(max, 0))
     }
 
-    let lastY = currentY()
-    let frame = 0
+    let lastY = scrollY()
     let settleTimer = 0
 
-    const settle = () => {
-      if (offset.current === 0) return
-      const height = el.offsetHeight
-      const y = currentY()
-      if (y <= height) return apply(0, true)
-      if (offset.current > 0 && offset.current < height) {
-        apply(offset.current > height / 2 ? height : 0, true)
-      }
-    }
-
-    const update = () => {
-      frame = 0
-      const y = currentY()
+    const follow = () => {
+      const y = scrollY()
       const delta = y - lastY
       lastY = y
       if (delta === 0) return
       const height = el.offsetHeight
-      // Near the top it's always fully shown; otherwise follow the scroll, clamped to its height.
-      const next = y <= 0 ? 0 : Math.min(Math.max(offset.current + delta, 0), height)
-      if (next !== offset.current) apply(next, false)
+      // Near the very top it's always fully shown; otherwise it tracks the scroll, clamped.
+      const next = y <= 0 ? 0 : Math.min(Math.max(target() + delta, 0), height)
+      if (next !== target()) moveTo(next, followMs)
+    }
+
+    const settle = () => {
+      const height = el.offsetHeight
+      if (target() === 0 || target() === height) return
+      // Within a header's height of the top, or mostly shown: come back. Otherwise: go.
+      const show = scrollY() <= height || target() < height / 2
+      moveTo(show ? 0 : height, settleMs)
     }
 
     const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update)
+      follow()
       // `scrollend` isn't everywhere yet (older iOS); a short idle timer covers it.
       window.clearTimeout(settleTimer)
       settleTimer = window.setTimeout(settle, 140)
     }
     const onScrollEnd = () => {
       window.clearTimeout(settleTimer)
-      // `scrollend` can arrive before the queued frame: apply the last movement first.
-      if (frame) {
-        cancelAnimationFrame(frame)
-        update()
-      }
+      follow()
       settle()
     }
     const onBreakpoint = () => {
-      if (!query.matches) apply(0, false)
+      if (!query.matches) moveTo(0, settleMs)
     }
 
     window.addEventListener('scroll', onScroll, { passive: true })
@@ -111,10 +164,12 @@ export function useQuickReturn(
       window.removeEventListener('scroll', onScroll)
       window.removeEventListener('scrollend', onScrollEnd)
       query.removeEventListener('change', onBreakpoint)
-      cancelAnimationFrame(frame)
       window.clearTimeout(settleTimer)
     }
-  }, [ref, enabled, media, apply])
+  }, [ref, animator, enabled, media, followMs, settleMs, moveTo, target])
+
+  // Stop any running animation on unmount.
+  useEffect(() => animator.stop, [animator])
 
   return reveal
 }

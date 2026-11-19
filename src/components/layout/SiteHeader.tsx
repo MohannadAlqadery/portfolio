@@ -70,7 +70,7 @@ export function SiteHeader() {
           // Phones and tablets: a "quick return" header (see useQuickReturn) that scrolls away
           // with the page and returns as soon as you scroll back up, like the browser's own bar.
           // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
-          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-[translate] xl:bg-canvas/90 xl:backdrop-blur-md',
+          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-transform xl:bg-canvas/90 xl:backdrop-blur-md',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
