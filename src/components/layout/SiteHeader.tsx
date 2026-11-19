@@ -6,11 +6,11 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useCommandPalette } from '@/features/command-palette/context'
 import { useActiveSection } from '@/hooks/useActiveSection'
-import { useHideOnScroll } from '@/hooks/useHideOnScroll'
+import { useQuickReturn } from '@/hooks/useQuickReturn'
 import { useScrolled } from '@/hooks/useScrolled'
 import { cn } from '@/lib/cn'
 import { useModKey } from '@/hooks/useModKey'
-import { navigate, usePathname } from '@/lib/router'
+import { matchRoute, navigate, usePathname } from '@/lib/router'
 import { goHome, goToSection } from '@/lib/scroll'
 import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
@@ -28,7 +28,9 @@ export function SiteHeader() {
   const modKey = useModKey()
   const pathname = usePathname()
   const onNotes = pathname.startsWith('/notes')
-  const [headerHidden, revealHeader] = useHideOnScroll(!menuOpen)
+  const onNote = matchRoute(pathname).name === 'note'
+  const headerRef = useRef<HTMLElement>(null)
+  const revealHeader = useQuickReturn(headerRef, !menuOpen)
 
   const onNavClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault()
@@ -50,27 +52,25 @@ export function SiteHeader() {
 
   return (
     <>
-      {/*
-        Solid strip behind the status bar / Dynamic Island. Page content never shows through it,
-        even while the header below is slid away. Zero height on devices without a top inset.
-      */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-x-0 top-0 z-50 h-[env(safe-area-inset-top)] bg-canvas xl:hidden"
-      />
-      {/* Reading progress, driven purely by CSS scroll timeline; sits just below the status bar. */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal/80"
-      />
+      {onNote ? (
+        // Reading progress on note pages: its own fixed line at the top edge, independent of the
+        // header, which moves underneath it. Driven by a CSS scroll timeline (no JS).
+        <div
+          aria-hidden="true"
+          data-testid="reading-progress"
+          className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal"
+        />
+      ) : null}
       <header
+        ref={headerRef}
         onFocusCapture={revealHeader}
         className={cn(
-          // Top padding clears the status bar / Dynamic Island when the page runs edge to edge.
-          // Phones and tablets: solid bar that slides away while reading and returns on scroll up.
-          // Wide screens: always visible, transparent over the hero until scrolled.
-          'sticky top-0 z-40 border-b border-line bg-canvas/90 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-[transform,background-color,border-color] duration-300 ease-out',
-          headerHidden && 'max-xl:-translate-y-full',
+          // Fixed to the top with a solid background; top padding clears the status bar / Island
+          // when the site runs edge to edge (home-screen app, or Safari with its bar at the bottom).
+          // Phones and tablets: a "quick return" header (see useQuickReturn) that scrolls away
+          // with the page and returns as soon as you scroll back up, like the browser's own bar.
+          // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
+          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-transform xl:bg-canvas/90 xl:backdrop-blur-md',
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
@@ -187,6 +187,8 @@ export function SiteHeader() {
           </div>
         </Container>
       </header>
+      {/* Holds the fixed header's space in the page flow, so content starts below it. */}
+      <div aria-hidden="true" className="h-[calc(3.5rem+1px+env(safe-area-inset-top))]" />
 
       {/*
         Rendered outside <header>: its backdrop-filter would otherwise become the containing block

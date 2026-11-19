@@ -104,8 +104,8 @@ export function Heading({ level, children }: { level: 2 | 3; children?: ReactNod
       id={id}
       className={
         level === 2
-          ? 'group mt-14 mb-4 scroll-mt-20 font-display text-3xl leading-tight text-fg md:text-4xl'
-          : 'group mt-10 mb-3 scroll-mt-20 text-lg font-medium text-fg'
+          ? 'group mt-14 mb-4 scroll-mt-[calc(5rem+env(safe-area-inset-top))] font-display text-3xl leading-tight text-fg md:text-4xl'
+          : 'group mt-10 mb-3 scroll-mt-[calc(5rem+env(safe-area-inset-top))] text-lg font-medium text-fg'
       }
     >
       {children}

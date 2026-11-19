@@ -22,7 +22,10 @@ export function Section({ id, title, intro, children, className }: SectionProps)
     <section
       id={id}
       aria-labelledby={headingId}
-      className={cn('scroll-mt-14 py-20 outline-none md:py-28', className)}
+      className={cn(
+        'scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] py-20 outline-none md:py-28',
+        className,
+      )}
     >
       <Container>
         <SectionHeader

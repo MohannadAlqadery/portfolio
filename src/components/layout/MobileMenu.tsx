@@ -34,8 +34,11 @@ export function MobileMenu({
     if (!open) return
 
     firstLinkRef.current?.focus()
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    // Lock both: iOS Safari scrolls the root element, other browsers the body.
+    const { body, documentElement: root } = document
+    const previous = [body.style.overflow, root.style.overflow] as const
+    body.style.overflow = 'hidden'
+    root.style.overflow = 'hidden'
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose(true)
@@ -48,7 +51,8 @@ export function MobileMenu({
     window.addEventListener('keydown', onKeyDown)
     desktop?.addEventListener('change', onBreakpoint)
     return () => {
-      document.body.style.overflow = previousOverflow
+      body.style.overflow = previous[0]
+      root.style.overflow = previous[1]
       window.removeEventListener('keydown', onKeyDown)
       desktop?.removeEventListener('change', onBreakpoint)
     }
@@ -58,8 +62,10 @@ export function MobileMenu({
     <div
       id={id}
       hidden={!open}
-      // Starts below the header (3.5rem + status bar / island) and keeps clear of the home indicator.
-      className="fixed inset-x-0 top-[calc(3.5rem+env(safe-area-inset-top))] bottom-0 z-30 overflow-y-auto bg-canvas xl:hidden"
+      // Full-screen sheet from the very top edge, so nothing of the page shows behind the status
+      // bar, the Island or Safari's toolbar. The header (z-40) stays on top with the close button;
+      // the top padding (header height + status bar) starts the list just below it.
+      className="fixed inset-0 z-30 overflow-y-auto overscroll-contain bg-canvas pt-[calc(3.5rem+1px+env(safe-area-inset-top))] xl:hidden"
     >
       <Container className="flex min-h-full flex-col justify-between pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <nav aria-label="Sections">
