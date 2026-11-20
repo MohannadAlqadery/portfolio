@@ -1,4 +1,5 @@
 import { navigate, normalisePath } from './router'
+import { getSmoothScroll } from './smooth-scroll'
 
 export function prefersReducedMotion(): boolean {
   return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
@@ -12,14 +13,20 @@ export function scrollToId(id: string): void {
   const target = document.getElementById(id)
   if (!target) return
 
-  target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+  // With smooth scrolling on, let Lenis animate (it honours the target's scroll-margin-top).
+  const lenis = getSmoothScroll()
+  if (lenis) lenis.scrollTo(target)
+  else
+    target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
   if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
   target.focus({ preventScroll: true })
   history.replaceState(null, '', `#${id}`)
 }
 
 export function scrollToTop(): void {
-  window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  const lenis = getSmoothScroll()
+  if (lenis) lenis.scrollTo(0)
+  else window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   history.replaceState(null, '', window.location.pathname + window.location.search)
 }
 

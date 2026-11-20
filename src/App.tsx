@@ -1,8 +1,10 @@
-import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
+import { lazy, Suspense, useEffect, type ComponentType, type LazyExoticComponent } from 'react'
 import { Layout } from '@/components/layout/Layout'
+import { MotionProvider } from '@/components/motion/MotionProvider'
 import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
 import { useHash } from '@/hooks/useHash'
 import { matchRoute, usePathname } from '@/lib/router'
+import { startSmoothScroll } from '@/lib/smooth-scroll'
 import { HomePage } from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
 
@@ -47,21 +49,28 @@ export default function App({ pages = lazyPages }: { pages?: RoutePages }) {
   const pathname = usePathname()
   const InternalView = pathname === '/' ? internalViews[hash] : undefined
 
+  // Inertial page scrolling (browser only; skipped for reduced motion).
+  useEffect(() => startSmoothScroll(), [])
+
   if (InternalView) {
     return (
-      <CommandPaletteProvider>
-        <Suspense fallback={null}>
-          <InternalView />
-        </Suspense>
-      </CommandPaletteProvider>
+      <MotionProvider>
+        <CommandPaletteProvider>
+          <Suspense fallback={null}>
+            <InternalView />
+          </Suspense>
+        </CommandPaletteProvider>
+      </MotionProvider>
     )
   }
 
   return (
-    <Layout>
-      <Suspense fallback={<div className="min-h-[70svh]" />}>
-        <RouteView pathname={pathname} pages={pages} />
-      </Suspense>
-    </Layout>
+    <MotionProvider>
+      <Layout>
+        <Suspense fallback={<div className="min-h-[70svh]" />}>
+          <RouteView pathname={pathname} pages={pages} />
+        </Suspense>
+      </Layout>
+    </MotionProvider>
   )
 }

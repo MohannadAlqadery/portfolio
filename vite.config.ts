@@ -79,11 +79,11 @@ export default defineConfig({
     react({ include: /\.(mdx|js|jsx|ts|tsx)$/ }),
     tailwindcss(),
     seo({ siteUrl, buildDate }),
-    // Hero name (serif, both styles) and body text are above the fold.
+    // Display headline, body text and mono labels are all above the fold.
     fontPreload([
-      /instrument-serif-latin-400-normal-.*\.woff2$/,
-      /instrument-serif-latin-400-italic-.*\.woff2$/,
+      /archivo-latin-wdth-normal-.*\.woff2$/,
       /geist-latin-wght-normal-.*\.woff2$/,
+      /geist-mono-latin-wght-normal-.*\.woff2$/,
     ]),
   ],
   resolve: {

@@ -119,7 +119,7 @@ test.describe('field notes', () => {
 
     // Fixed with a solid background at the top edge: what Safari 26 paints its toolbar from.
     await expect(header).toHaveCSS('position', 'fixed')
-    await expect(header).toHaveCSS('background-color', 'rgb(11, 13, 12)')
+    await expect(header).toHaveCSS('background-color', 'rgb(10, 10, 10)')
     expect(await headerTop()).toBe(0)
     // Content starts below it rather than underneath it.
     const h1 = (await page.getByRole('heading', { level: 1 }).boundingBox())?.y ?? 0
