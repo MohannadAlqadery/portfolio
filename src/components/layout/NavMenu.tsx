@@ -5,6 +5,7 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useModKey } from '@/hooks/useModKey'
 import { cn } from '@/lib/cn'
+import { preloadRoute } from '@/lib/route-modules'
 import { LocalClock } from './LocalClock'
 
 type NavMenuProps = {
@@ -61,6 +62,8 @@ export function NavMenu({
 
   useEffect(() => {
     firstLinkRef.current?.focus({ preventScroll: true })
+    // The menu links to the notes: start loading them now, so picking one switches smoothly.
+    void preloadRoute('/notes')
   }, [])
 
   return (

@@ -61,6 +61,7 @@ export function toggleThemeFrom(origin?: { x: number; y: number }): Theme {
   root.dataset.themeSwitch = ''
 
   const transition = document.startViewTransition(() => setTheme(next))
+  transition.ready.catch(() => {}) // skipped by a newer transition: the theme still applies
   void transition.finished.finally(() => {
     delete root.dataset.themeSwitch
   })

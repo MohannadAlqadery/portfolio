@@ -99,6 +99,7 @@ export function SiteHeader() {
       ) : null}
       <header
         ref={headerRef}
+        data-vt="site-header"
         className={cn(
           // A floating pill, centred near the top edge; only the pill itself takes clicks.
           'pointer-events-none fixed top-[calc(env(safe-area-inset-top)+0.75rem)] z-40 flex justify-center px-4',

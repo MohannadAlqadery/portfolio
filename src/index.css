@@ -217,6 +217,43 @@
   }
 }
 
+/*
+ * Page changes (see router.ts): the old page fades, lifts and softens; the new one rises into
+ * place. The pill nav and the Ask button get their own names, so they hold perfectly still while
+ * the page underneath changes. Scoped to [data-page-transition] so the theme reveal is untouched.
+ */
+:root[data-page-transition] [data-vt='site-header'] {
+  view-transition-name: site-header;
+}
+
+:root[data-page-transition] [data-vt='ask'] {
+  view-transition-name: ask-pill;
+}
+
+:root[data-page-transition]::view-transition-old(root) {
+  animation: page-out 220ms var(--ease-in-quick) both;
+}
+
+:root[data-page-transition]::view-transition-new(root) {
+  animation: page-in 520ms var(--ease-out-expo) both;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.99);
+    filter: blur(4px);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+    filter: blur(6px);
+  }
+}
+
 /* ------------------------------------------------------------------------------------------------
  * Custom utilities
  * --------------------------------------------------------------------------------------------- */
