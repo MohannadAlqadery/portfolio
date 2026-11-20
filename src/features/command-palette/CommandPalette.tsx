@@ -37,7 +37,7 @@ function Item({
       value={value}
       keywords={keywords ?? []}
       onSelect={onSelect}
-      className="flex h-10 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg-muted select-none data-[selected=true]:bg-raised data-[selected=true]:text-fg"
+      className="flex h-10 cursor-pointer items-center gap-3 rounded-sm px-3 text-sm text-fg-muted transition-colors duration-150 select-none data-[selected=true]:bg-raised data-[selected=true]:text-fg"
     >
       <span aria-hidden="true" className="text-fg-subtle [&_svg]:size-4">
         {icon}
@@ -75,8 +75,9 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
       }}
       label="Command palette"
       loop
-      overlayClassName="fixed inset-0 z-50 bg-canvas/70 backdrop-blur-[2px]"
-      contentClassName="fixed inset-x-4 top-[12vh] z-50 mx-auto max-w-lg overflow-hidden rounded-md border border-line-strong bg-surface shadow-2xl shadow-black/60 sm:inset-x-0"
+      // Enter and exit animations keyed to Radix's data-state (it waits for the exit to finish).
+      overlayClassName="fixed inset-0 z-50 bg-canvas/70 backdrop-blur-[2px] data-[state=closed]:animate-backdrop-out data-[state=open]:animate-backdrop-in"
+      contentClassName="fixed inset-x-4 top-[max(12vh,calc(env(safe-area-inset-top)+1rem))] z-50 mx-auto max-w-lg origin-top overflow-hidden rounded-md border border-line-strong bg-surface shadow-2xl shadow-black/60 will-change-[transform,opacity] data-[state=closed]:animate-panel-out data-[state=open]:animate-panel-in sm:inset-x-0"
     >
       <div className="flex items-center gap-3 border-b border-line px-4">
         <span aria-hidden="true" className="font-mono text-sm text-signal">
@@ -89,7 +90,8 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
         <Kbd>Esc</Kbd>
       </div>
 
-      <Command.List className="max-h-[min(60vh,24rem)] overflow-y-auto overscroll-contain">
+      {/* cmdk measures its content into --cmdk-list-height, so the list glides as results filter. */}
+      <Command.List className="h-[min(var(--cmdk-list-height),min(60vh,24rem))] overflow-y-auto overscroll-contain transition-[height] duration-200 ease-[var(--ease-out-expo)] motion-reduce:transition-none">
         <Command.Empty className="px-5 py-8 font-mono text-sm text-fg-subtle">
           No match. Try “contact” or “toolkit”.
         </Command.Empty>

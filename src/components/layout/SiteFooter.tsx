@@ -3,6 +3,7 @@ import { useState, type MouseEvent, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
+import { NightShiftCityLoader } from '@/features/night-city/NightShiftCityLoader'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { cn } from '@/lib/cn'
@@ -63,9 +64,7 @@ export function SiteFooter() {
               <br />
               <em className="text-fg-muted">{rest.join(' ')}</em>
             </p>
-            <p className="mt-5 label text-fg-subtle">
-              {site.role} · {site.location.city}, {site.location.country}
-            </p>
+            <p className="mt-5 label text-fg-subtle">{site.role} · REACH Digital</p>
           </div>
 
           <nav aria-label="Footer" className="md:col-span-3">
@@ -129,6 +128,9 @@ export function SiteFooter() {
           </div>
         </div>
 
+        {/* The night-shift city: its buildings stand on the line above the bottom bar. */}
+        <NightShiftCityLoader className="mt-16 h-[19rem] md:mt-20 md:h-[23rem]" />
+
         {/*
           Phone: [© · back to top] / updated. Desktop: © | updated | back to top.
           Version and build SHA stay out of sight but are inspectable on the element.
@@ -136,7 +138,7 @@ export function SiteFooter() {
         <div
           data-version={__APP_VERSION__}
           data-build={__BUILD_SHA__}
-          className="mt-14 grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3"
+          className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3"
         >
           <p className="md:order-1">
             © {__BUILD_DATE__.slice(0, 4)} {site.name}

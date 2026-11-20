@@ -13,6 +13,17 @@ if (!('ResizeObserver' in globalThis)) {
     disconnect() {}
   }
 }
+// Never reports an intersection, so lazy, on-screen-only features (the footer city) stay idle.
+if (!('IntersectionObserver' in globalThis)) {
+  globalThis.IntersectionObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+    takeRecords() {
+      return []
+    }
+  } as unknown as typeof IntersectionObserver
+}
 window.scrollTo = () => {}
 
 afterEach(() => {
