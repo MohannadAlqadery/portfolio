@@ -16,6 +16,14 @@ import { LocalClock } from './LocalClock'
 import { MobileMenu } from './MobileMenu'
 
 const sectionIds = sections.map((s) => s.id)
+
+/**
+ * Full-width fixed bars stay put when page scrolling is locked (Ctrl K palette, phone menu).
+ * Locking hides a desktop scrollbar, which would widen the viewport and shift a fixed bar's
+ * centred content. Radix's scroll lock pulls `right-scroll-bar-position` elements in by the
+ * scrollbar's width; the menu's own lock sets --scroll-lock-gap for the same purpose.
+ */
+const HOLD_STILL = 'right-scroll-bar-position left-0 right-[var(--scroll-lock-gap,0px)]'
 const pad = (n: number) => n.toString().padStart(2, '0')
 
 export function SiteHeader() {
@@ -58,7 +66,10 @@ export function SiteHeader() {
         <div
           aria-hidden="true"
           data-testid="reading-progress"
-          className="pointer-events-none fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal"
+          className={cn(
+            'pointer-events-none fixed top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal',
+            HOLD_STILL,
+          )}
         />
       ) : null}
       <header
@@ -70,7 +81,8 @@ export function SiteHeader() {
           // Phones and tablets: a "quick return" header (see useQuickReturn) that scrolls away
           // with the page and returns as soon as you scroll back up, like the browser's own bar.
           // Wide screens: always visible, translucent, and transparent over the hero until scrolled.
-          'fixed inset-x-0 top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-transform xl:bg-canvas/90 xl:backdrop-blur-md',
+          'fixed top-0 z-40 border-b border-line bg-canvas pt-[env(safe-area-inset-top)] transition-[background-color,border-color] duration-300 max-xl:will-change-transform xl:bg-canvas/90 xl:backdrop-blur-md',
+          HOLD_STILL,
           !(scrolled || menuOpen) &&
             'xl:border-transparent xl:bg-transparent xl:backdrop-blur-none',
         )}
