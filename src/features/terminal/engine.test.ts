@@ -35,7 +35,7 @@ describe('terminal engine', () => {
 
   it('filters the toolkit', () => {
     expect(text('tools kql')).toMatch(/^KQL · Query and Scripting · used on shift$/m)
-    expect(text('tools cobol')).toMatch(/No tool matching "cobol"/)
+    expect(text('tools cobol')).toMatch(/Nothing in my toolkit matches "cobol"/)
   })
 
   it('never puts the email address in its text; it asks the page to reveal it', () => {
@@ -54,9 +54,27 @@ describe('terminal engine', () => {
     expect(respond('exit').action).toEqual({ type: 'close' })
   })
 
-  it('says plainly that it is scripted when it does not understand', () => {
+  it('says plainly that it is scripted when it does not understand, and offers the chips again', () => {
     const reply = respond('fhqwhgads')
-    expect(reply.lines[0]).toEqual({ text: 'command not found: fhqwhgads', tone: 'warn' })
+    expect(reply.lines[0]).toEqual({
+      text: 'I don’t have an answer for "fhqwhgads" yet.',
+      tone: 'warn',
+    })
     expect(reply.lines[1]?.text).toMatch(/not an AI/)
+    expect(reply.fallback).toBe(true)
+    expect(respond('certs').fallback).toBeUndefined()
+  })
+
+  it('speaks in the first person, in full sentences', () => {
+    expect(text('whoami')).toMatch(/^I’m Mohannad Alqadery, a SOC analyst./)
+    expect(text('certs')).toMatch(/^Here’s what I’m certified in:/)
+    expect(text('contact')).toMatch(/^The best ways to reach me:/)
+    expect(text('are you an AI?')).toMatch(/scripted terminal, not an AI/)
+    expect(text('thanks')).toMatch(/^Anytime/)
+  })
+
+  it('lists every course under study', () => {
+    expect(text('study')).toMatch(/Risk Assessment/)
+    expect(text('study')).toContain('Cloud Security (AWS)')
   })
 })

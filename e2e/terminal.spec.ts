@@ -47,6 +47,41 @@ test.describe('ask terminal', () => {
     expect(consoleErrors).toEqual([])
   })
 
+  test('types chips in, thinks for a beat, then reveals the answer line by line', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    await page.getByRole('button', { name: /^Ask/ }).click()
+    const terminal = page.getByRole('dialog', { name: /mohannad@soc/ })
+    const input = terminal.getByRole('textbox', { name: /Ask a question/ })
+
+    // The chip types its question into the input before sending it.
+    await terminal.getByRole('button', { name: 'What do you do?' }).click()
+    await expect(input).toHaveValue(/^What do/)
+    // Then the terminal "thinks", and the answer arrives.
+    await expect(terminal.locator('[data-thinking]')).toBeVisible()
+    await expect(terminal.getByRole('log')).toContainText('I’m Mohannad Alqadery, a SOC analyst.')
+    await expect(terminal.locator('[data-thinking]')).toHaveCount(0)
+    await expect(input).toHaveValue('')
+
+    // Answer lines fade in one after another (each line starts later than the one before).
+    await input.fill('help')
+    await input.press('Enter')
+    const lines = terminal.getByRole('log').locator('p', { hasText: /whoami|certs/ })
+    await expect(lines.first()).toBeVisible()
+    await expect.poll(() => lines.last().evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+  })
+
+  test('answers at once with Reduce Motion', async ({ page }) => {
+    await page.goto('/')
+    await page.getByRole('button', { name: /^Ask/ }).click()
+    const terminal = page.getByRole('dialog', { name: /mohannad@soc/ })
+    await terminal.getByRole('button', { name: 'How can I reach you?' }).click()
+    await expect(terminal.locator('[data-thinking]')).toHaveCount(0)
+    await expect(terminal.getByRole('log')).toContainText('The best ways to reach me:')
+  })
+
   test('opens with the backtick key and passes an accessibility audit', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()

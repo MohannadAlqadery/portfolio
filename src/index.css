@@ -172,6 +172,22 @@
       opacity: 0.25;
     }
   }
+
+  /* The terminal's "thinking" dots: each one lifts and brightens in turn. */
+  --animate-typing: typing 1s ease-in-out infinite;
+
+  @keyframes typing {
+    0%,
+    70%,
+    100% {
+      opacity: 0.25;
+      transform: translateY(0);
+    }
+    35% {
+      opacity: 1;
+      transform: translateY(-2px);
+    }
+  }
 }
 
 /* Light theme: same token names, so every component follows without changes. */
