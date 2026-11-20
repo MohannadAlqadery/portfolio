@@ -23,7 +23,7 @@ export function Section({ id, title, intro, children, className }: SectionProps)
       id={id}
       aria-labelledby={headingId}
       className={cn(
-        'scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] py-20 outline-none md:py-28',
+        'scroll-mt-[calc(4.5rem+env(safe-area-inset-top))] py-24 outline-none md:py-36',
         className,
       )}
     >
@@ -37,7 +37,7 @@ export function Section({ id, title, intro, children, className }: SectionProps)
         >
           {intro}
         </SectionHeader>
-        {children ? <div className="mt-10 reveal md:mt-14">{children}</div> : null}
+        {children ? <div className="mt-12 reveal md:mt-20">{children}</div> : null}
       </Container>
     </section>
   )

@@ -1,57 +1,108 @@
+import { m, type Variants } from 'motion/react'
 import { Section } from '@/components/layout/Section'
-import { toolkit } from '@/content/toolkit'
+import { toolkit, type ToolkitItem } from '@/content/toolkit'
+import { cn } from '@/lib/cn'
 
 const totalItems = toolkit.reduce((sum, column) => sum + column.items.length, 0)
 
-/** Skills as an ATT&CK-style matrix: tactics across the top, techniques beneath. */
+const column: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  shown: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1], staggerChildren: 0.03 },
+  },
+}
+
+const chip: Variants = {
+  hidden: { opacity: 0, y: 6, filter: 'blur(4px)' },
+  shown: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.4 } },
+}
+
+/**
+ * Staggered offsets (lg: four columns) so the grid steps down left to right, like the reference
+ * layout. Offsets apply per row position, so both rows step the same way.
+ */
+const stepDown = ['', 'lg:mt-8', 'lg:mt-16', 'lg:mt-24']
+
+function Chip({ item }: { item: ToolkitItem }) {
+  return (
+    <m.li
+      variants={chip}
+      className={cn(
+        'inline-flex h-8 items-center gap-1.5 rounded-sm border px-2.5 text-[0.8125rem] whitespace-nowrap transition-colors',
+        item.core
+          ? 'border-fg bg-fg font-medium text-canvas'
+          : 'border-line-strong text-fg-muted hover:border-fg-subtle hover:text-fg',
+        item.level === 'basics' && 'border-dashed',
+      )}
+    >
+      {item.name}
+      {item.core ? <span className="sr-only"> (used on shift)</span> : null}
+      {item.level === 'basics' ? (
+        <span className="label text-[0.5625rem] text-fg-subtle">basics</span>
+      ) : null}
+    </m.li>
+  )
+}
+
+/** Skills as columns of chips: what I use on shift is filled, early-stage skills are dashed. */
 export function ToolkitSection() {
   return (
     <Section
       id="toolkit"
       title={
         <>
-          The <em className="text-fg-muted">matrix</em>
+          The <em>toolkit.</em>
         </>
       }
-      intro={`${totalItems} techniques across ${toolkit.length} tactics, laid out the way ATT&CK lays out an adversary. Built through day-to-day SOC work, industry certifications and hands-on lab training.`}
+      intro={`${totalItems} tools and techniques in ${toolkit.length} areas, from day-to-day SOC work, certifications and hands-on labs.`}
     >
-      {/* 8 tactics: 2 per row on phones and tablets, 4 per row from lg, so rows are always full. */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line lg:grid-cols-4">
-        {toolkit.map((column) => {
-          const headingId = `toolkit-${column.id}`
+      <div className="grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-y-20">
+        {toolkit.map((group, i) => {
+          const headingId = `toolkit-${group.id}`
           return (
-            <section
-              key={column.id}
+            <m.section
+              key={group.id}
               aria-labelledby={headingId}
-              className="group/col flex flex-col bg-canvas"
+              variants={column}
+              initial="hidden"
+              whileInView="shown"
+              viewport={{ once: true, amount: 0.3 }}
+              className={cn('border-t border-line-strong pt-5', stepDown[i % 4])}
             >
-              <div className="border-b border-line bg-raised px-3 py-3">
-                <h3 id={headingId} className="text-sm text-fg">
-                  {column.title}
-                </h3>
-                <p className="mt-1 label text-fg-subtle">
-                  {column.items.length} {column.items.length === 1 ? 'technique' : 'techniques'}
-                </p>
-              </div>
-              <ul className="flex flex-1 flex-col gap-1.5 p-2">
-                {column.items.map((item) => (
-                  <li
-                    key={item.name}
-                    className="flex min-h-10 items-center justify-between gap-2 rounded-sm border border-line bg-surface px-2.5 py-2 text-[0.8125rem] text-fg-muted transition-colors group-hover/col:border-line-strong hover:!border-signal/60 hover:text-fg"
-                  >
-                    <span>{item.name}</span>
-                    {item.level === 'basics' ? (
-                      <span className="shrink-0 label text-[0.625rem] text-fg-subtle">Basics</span>
-                    ) : null}
-                  </li>
+              <h3
+                id={headingId}
+                className="font-display text-xl leading-tight font-semibold tracking-tight text-fg"
+              >
+                {group.title}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-fg-subtle">{group.summary}</p>
+              <ul className="mt-5 flex flex-wrap gap-1.5">
+                {group.items.map((item) => (
+                  <Chip key={item.name} item={item} />
                 ))}
               </ul>
-            </section>
+            </m.section>
           )
         })}
       </div>
-      <p className="mt-4 label text-fg-subtle">
-        Cells marked <span className="text-fg-muted">Basics</span> are skills I’m still building.
+
+      <p className="mt-14 flex flex-wrap items-center gap-x-6 gap-y-2 label text-fg-subtle">
+        <span className="flex items-center gap-2">
+          <span aria-hidden="true" className="size-2.5 rounded-[2px] bg-fg" /> Used on shift
+        </span>
+        <span className="flex items-center gap-2">
+          <span aria-hidden="true" className="size-2.5 rounded-[2px] border border-line-strong" />{' '}
+          Hands-on
+        </span>
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-2.5 rounded-[2px] border border-dashed border-fg-subtle"
+          />{' '}
+          Still building
+        </span>
       </p>
     </Section>
   )

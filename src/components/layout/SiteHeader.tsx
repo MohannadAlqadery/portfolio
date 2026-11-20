@@ -15,11 +15,11 @@ const sectionIds = sections.map((s) => s.id)
 const pad = (n: number) => n.toString().padStart(2, '0')
 
 /**
- * The fixed header spans the width so it can hold still when page scrolling is locked (Ctrl K
- * palette): Radix pulls `right-scroll-bar-position` elements in by the hidden scrollbar's width,
- * which keeps the centred pill from shifting sideways.
+ * The fixed header spans the width. When a dialog locks scrolling (Ctrl K palette) the scrollbar
+ * disappears and the viewport widens; pulling the right edge in by the scrollbar's width (see
+ * trackScrollLockGap) keeps the centred pill exactly where it was.
  */
-const HOLD_STILL = 'right-scroll-bar-position left-0 right-0'
+const HOLD_STILL = 'left-0 right-(--scroll-lock-gap,0px)'
 
 /** "02 · Case files" for the section in view; the pill's small wayfinding label. */
 function locationLabel(active: string | null, onNotes: boolean): string {

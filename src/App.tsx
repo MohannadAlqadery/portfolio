@@ -4,6 +4,7 @@ import { MotionProvider } from '@/components/motion/MotionProvider'
 import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
 import { useHash } from '@/hooks/useHash'
 import { matchRoute, usePathname } from '@/lib/router'
+import { trackScrollLockGap } from '@/lib/scrollbar'
 import { startSmoothScroll } from '@/lib/smooth-scroll'
 import { HomePage } from '@/pages/HomePage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -51,6 +52,8 @@ export default function App({ pages = lazyPages }: { pages?: RoutePages }) {
 
   // Inertial page scrolling (browser only; skipped for reduced motion).
   useEffect(() => startSmoothScroll(), [])
+  // Lets fixed chrome hold still when a dialog hides the scrollbar.
+  useEffect(() => trackScrollLockGap(), [])
 
   if (InternalView) {
     return (
