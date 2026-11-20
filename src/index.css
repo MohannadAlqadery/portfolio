@@ -76,16 +76,17 @@
   --animate-caret: caret 1.1s steps(1, end) infinite;
 
   /*
-   * Dialogs (command palette): the backdrop fades and the panel rises and settles on the way in
-   * (ease-out-expo, ~260ms); on the way out both leave faster on an accelerating curve. Radix
+   * Dialogs (command palette): the backdrop fades in and the panel rises into focus (blur clears)
+   * over ~460ms on ease-out-expo; on the way out both dissolve over ~240ms on a soft curve. Radix
    * waits for the exit animation before unmounting. Reduce Motion shortens them to nothing.
    */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-quick: cubic-bezier(0.4, 0, 1, 1);
-  --animate-backdrop-in: backdrop-in 220ms var(--ease-out-expo) both;
-  --animate-backdrop-out: backdrop-out 160ms var(--ease-in-quick) both;
-  --animate-panel-in: panel-in 280ms var(--ease-out-expo) both;
-  --animate-panel-out: panel-out 160ms var(--ease-in-quick) both;
+  --ease-in-soft: cubic-bezier(0.55, 0, 0.75, 0.25);
+  --animate-backdrop-in: backdrop-in 380ms var(--ease-out-expo) both;
+  --animate-backdrop-out: backdrop-out 260ms var(--ease-in-soft) both;
+  --animate-panel-in: panel-in 460ms var(--ease-out-expo) both;
+  --animate-panel-out: panel-out 240ms var(--ease-in-soft) both;
 
   @keyframes backdrop-in {
     from {
@@ -99,17 +100,20 @@
     }
   }
 
+  /* The palette rises a touch and comes into focus; it leaves the same way, a little faster. */
   @keyframes panel-in {
     from {
       opacity: 0;
-      transform: translateY(-10px) scale(0.97);
+      transform: translateY(14px) scale(0.98);
+      filter: blur(8px);
     }
   }
 
   @keyframes panel-out {
     to {
       opacity: 0;
-      transform: translateY(-6px) scale(0.98);
+      transform: translateY(8px) scale(0.985);
+      filter: blur(6px);
     }
   }
 
