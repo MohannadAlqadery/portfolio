@@ -20,20 +20,21 @@ and transitions and add a security layer on top; we copy none of its assets or c
 | Accent    | Signal green `#7BD389`, only for status / live states; severity colours stay semantic-only                                                                     |
 | Footer    | **Traffic crowd**: walking line-art crowd (CC0 Open Peeps), giant `MOHANNAD.` watermark, detection boxes lock onto people, "Finally, some traffic on my site." |
 | Assistant | **Scripted terminal** panel (no backend, no API key, no prompt-injection surface)                                                                              |
+| Portrait  | None. The hero card is an **ASCII monogram** (`MA` in glyphs), no photo of Mohannad on the site                                                                |
 | Contact   | Unchanged: obfuscated email + LinkedIn; the form only builds a `mailto:` draft                                                                                 |
 
 ### Reference → our version
 
-| Reference                        | v2                                                                                             |
-| -------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `< SOFTWARE ENGINEER />` hero    | `[ SECURITY ANALYST ]` decrypt-scrambles in; `{{ /SOC & INCIDENT RESPONSE }}` types in mono    |
-| Photo card flips into the intro  | Portrait starts as an ASCII/dither matrix and resolves while it tilts into "Hi, I'm Mohannad." |
-| Floating pill nav + `⋯` menu     | Same, `⋯` opens the existing command palette; theme toggle in the pill                         |
-| Tech stack columns with chips    | Toolkit columns (Detect · Investigate · Respond · Offensive), daily drivers highlighted        |
-| Project folders                  | Case-file folders: redacted pages, KQL snippets and ATT&CK tags slide out on hover             |
-| Wavy experience timeline         | Signal trace: a waveform path that draws on scroll, nodes per role and degree                  |
-| "Let's talk." form               | "Open a channel." form → `mailto:` draft                                                       |
-| Crowd footer with name watermark | Traffic crowd with detection overlay (see Decisions)                                           |
+| Reference                        | v2                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `< SOFTWARE ENGINEER />` hero    | `[ SECURITY ANALYST ]` decrypt-scrambles in; `{{ /SOC & INCIDENT RESPONSE }}` types in mono                               |
+| Photo card flips into the intro  | No photo: an **ASCII monogram** card (`MA` drawn in glyphs that decrypt and shimmer) tilts in 3D into "Hi, I'm Mohannad." |
+| Floating pill nav + `⋯` menu     | Same, `⋯` opens the existing command palette; theme toggle in the pill                                                    |
+| Tech stack columns with chips    | Toolkit columns (Detect · Investigate · Respond · Offensive), daily drivers highlighted                                   |
+| Project folders                  | Case-file folders: redacted pages, KQL snippets and ATT&CK tags slide out on hover                                        |
+| Wavy experience timeline         | Signal trace: a waveform path that draws on scroll, nodes per role and degree                                             |
+| "Let's talk." form               | "Open a channel." form → `mailto:` draft                                                                                  |
+| Crowd footer with name watermark | Traffic crowd with detection overlay (see Decisions)                                                                      |
 
 ### Design system v2
 
@@ -48,18 +49,18 @@ and transitions and add a security layer on top; we copy none of its assets or c
 
 ### Phases (one branch + PR each)
 
-| Phase | Scope                                                                 |
-| ----- | --------------------------------------------------------------------- |
-| v2.1  | Tokens (mono + light), Archivo, theme infra, Lenis, motion primitives |
-| v2.2  | Floating pill nav, theme toggle, `⋯` menu → command palette           |
-| v2.3  | Hero: decrypt headline, ASCII portrait, scroll-driven flip into intro |
-| v2.4  | Intro + toolkit columns                                               |
-| v2.5  | Case-file folders + case detail                                       |
-| v2.6  | Signal-trace timeline (experience, education, credentials)            |
-| v2.7  | Contact: "Open a channel." + mailto draft                             |
-| v2.8  | Footer: traffic crowd, watermark, sticky reveal                       |
-| v2.9  | Scripted terminal assistant                                           |
-| v2.10 | a11y, reduced motion, perf (Lighthouse ≥ 95), e2e, OG image, deploy   |
+| Phase | Scope                                                                      |
+| ----- | -------------------------------------------------------------------------- |
+| v2.1  | Tokens (mono + light), Archivo, theme infra, Lenis, motion primitives      |
+| v2.2  | Floating pill nav, theme toggle, `⋯` menu → command palette                |
+| v2.3  | Hero: decrypt headline, ASCII monogram card, scroll-driven flip into intro |
+| v2.4  | Intro + toolkit columns                                                    |
+| v2.5  | Case-file folders + case detail                                            |
+| v2.6  | Signal-trace timeline (experience, education, credentials)                 |
+| v2.7  | Contact: "Open a channel." + mailto draft                                  |
+| v2.8  | Footer: traffic crowd, watermark, sticky reveal                            |
+| v2.9  | Scripted terminal assistant                                                |
+| v2.10 | a11y, reduced motion, perf (Lighthouse ≥ 95), e2e, OG image, deploy        |
 
 ---
 
