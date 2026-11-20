@@ -18,7 +18,7 @@ export function CaseSheet({ file, currentMonth }: { file: CaseFile; currentMonth
         <p className="flex flex-wrap items-center gap-3 label text-fg-subtle">
           {file.id}
           <Chip variant={active ? 'signal' : 'neutral'}>
-            {active ? <StatusDot pulse /> : null}
+            {active ? <StatusDot tone="signal" pulse /> : null}
             {active ? 'active' : 'closed'}
           </Chip>
         </p>

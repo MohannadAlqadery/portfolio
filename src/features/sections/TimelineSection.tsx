@@ -63,7 +63,7 @@ function Node({
       className={cn('grid size-5 place-items-center rounded-full border-2 bg-canvas', 'border-fg')}
     >
       <span
-        className={cn('size-1.5 rounded-full', entry.current ? 'animate-blink bg-signal' : 'bg-fg')}
+        className={cn('size-1.5 rounded-full', entry.current ? 'animate-blink bg-fg' : 'bg-fg')}
       />
     </m.span>
   )
@@ -75,7 +75,7 @@ function EntryText({ entry, index }: { entry: TimelineEntry; index: number }) {
       <p className="flex flex-wrap items-center gap-2">
         {entry.current ? (
           <Chip variant="signal">
-            <StatusDot pulse /> current
+            <StatusDot tone="signal" pulse /> Active
           </Chip>
         ) : (
           <Chip>{KIND_LABEL[entry.kind]}</Chip>
