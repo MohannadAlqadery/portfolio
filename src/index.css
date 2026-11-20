@@ -182,6 +182,29 @@
   color-scheme: light;
 }
 
+/*
+ * Theme switch: the new theme grows as a circle from the toggle button (see toggleThemeFrom).
+ * Scoped to [data-theme-switch] so other view transitions keep the default cross-fade.
+ */
+:root[data-theme-switch]::view-transition-old(root),
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+:root[data-theme-switch]::view-transition-new(root) {
+  animation: theme-reveal 650ms var(--ease-out-expo) both;
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--reveal-x, 50%) var(--reveal-y, 0));
+  }
+  to {
+    clip-path: circle(var(--reveal-r, 150vmax) at var(--reveal-x, 50%) var(--reveal-y, 0));
+  }
+}
+
 /* ------------------------------------------------------------------------------------------------
  * Custom utilities
  * --------------------------------------------------------------------------------------------- */
@@ -362,9 +385,6 @@
     min-height: 100dvh;
     background-color: var(--color-canvas);
     color: var(--color-fg);
-    transition:
-      background-color 400ms var(--ease-out-quart),
-      color 400ms var(--ease-out-quart);
     font-family: var(--font-sans);
     font-feature-settings: 'ss01', 'cv11';
     -webkit-font-smoothing: antialiased;

@@ -59,9 +59,8 @@ test.describe('home page', () => {
   })
 })
 
-test.describe('mobile navigation', () => {
-  test('menu opens, navigates and closes', async ({ page, isMobile }) => {
-    test.skip(!isMobile, 'mobile only')
+test.describe('site menu', () => {
+  test('menu opens from the pill, navigates and closes', async ({ page }) => {
     await page.goto('/')
     await page.getByRole('button', { name: 'Open menu' }).click()
 

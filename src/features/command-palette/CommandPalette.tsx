@@ -1,5 +1,14 @@
 import { Command } from 'cmdk'
-import { ArrowUp, AtSign, Copy, CornerDownLeft, FileText, Hash, NotebookPen } from 'lucide-react'
+import {
+  ArrowUp,
+  AtSign,
+  Copy,
+  CornerDownLeft,
+  FileText,
+  Hash,
+  NotebookPen,
+  SunMoon,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { Kbd } from '@/components/ui/Kbd'
@@ -9,6 +18,7 @@ import { notePath, notes } from '@/features/notes/notes'
 import { copyToClipboard, getEmail } from '@/lib/email'
 import { navigate } from '@/lib/router'
 import { goHome, goToSection } from '@/lib/scroll'
+import { getTheme, toggleThemeFrom } from '@/lib/theme'
 
 type CommandPaletteProps = {
   open: boolean
@@ -116,6 +126,20 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
             onSelect={() => run(goHome)}
           >
             Back to top
+          </Item>
+        </Command.Group>
+
+        <Command.Group heading="Display" className={groupClass}>
+          <Item
+            value="switch theme"
+            keywords={['theme', 'dark', 'light', 'mode', 'colour', 'color']}
+            icon={<SunMoon />}
+            onSelect={() =>
+              // The new theme sweeps down from the top centre, where the nav sits.
+              run(() => toggleThemeFrom({ x: window.innerWidth / 2, y: 0 }))
+            }
+          >
+            Switch to {getTheme() === 'dark' ? 'light' : 'dark'} theme
           </Item>
         </Command.Group>
 
