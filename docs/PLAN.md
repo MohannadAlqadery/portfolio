@@ -47,6 +47,19 @@ and transitions and add a security layer on top; we copy none of its assets or c
 - **Theme:** chosen theme saved in `localStorage`; `public/theme-init.js` applies it before first
   paint (an external file, so the CSP stays `script-src 'self'`).
 
+### Status
+
+v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided while building:
+
+- **Hero card:** an ASCII monogram instead of a portrait (owner's choice).
+- **Education** became a **Timeline** section (`#timeline`) that also carries roles and
+  certifications; the degree and coursework sit under it.
+- **Footer reveal:** a scroll-timeline "rise" instead of a sticky curtain. The curtain kept the
+  footer in the viewport from the start, which loaded the crowd early and counted its font swap
+  as layout shift.
+- **Folders** open a case sheet in the page rather than a modal, so content stays indexable and
+  no scroll lock is needed.
+
 ### Phases (one branch + PR each)
 
 | Phase | Scope                                                                      |

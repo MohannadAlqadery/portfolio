@@ -4,8 +4,28 @@ Personal site of **Mohannad Alqadery**, SOC analyst based in Abu Dhabi.
 
 **Live:** https://mohannad-alqadery.vercel.app
 
-Built with React, TypeScript, Vite and Tailwind CSS. See [`docs/PLAN.md`](docs/PLAN.md) for the design
-direction, information architecture and delivery phases.
+Built with React, TypeScript, Vite and Tailwind CSS, with `motion` and Lenis for animation and
+smooth scrolling. See [`docs/PLAN.md`](docs/PLAN.md) for the design direction ("Case File Noir",
+v2), information architecture and delivery phases.
+
+## What's on the page
+
+- **Hero:** a pinned scroll scene. A decrypting `[ SECURITY ANALYST ]` headline, then an ASCII
+  monogram card that tilts in 3D into the "Hi, I'm Mohannad." intro.
+- **Floating pill nav** with the current section, a light/dark switch (circular reveal) and a
+  drop-down site menu; `Ctrl/⌘ K` opens a command palette.
+- **Sections:** profile (word-by-word scroll reveal), case files as document folders,
+  credentials, toolkit as staggered chip columns, a signal-trace timeline, and contact with a
+  `mailto:` draft form.
+- **Footer:** a walking crowd with detection boxes in front of a giant watermark. The figures are
+  [Open Peeps](https://www.openpeeps.com) by Pablo Stanley (CC0); see
+  `src/features/crowd/peeps/README.md`.
+- **Ask terminal:** a scripted assistant (corner pill, or the backtick key) that answers from the
+  site's own content. No AI and no network.
+- **Field notes** at `/notes`: MDX write-ups, pre-rendered as static HTML.
+
+Every animation honours Reduce Motion, and the heavier pieces (crowd, terminal, palette) load
+only when they are needed.
 
 ## Getting started
 
@@ -45,8 +65,11 @@ Every pull request runs three jobs:
 - Strict Content Security Policy (`script-src 'self'`, no third-party origins), HSTS, `nosniff`,
   `frame-ancestors 'none'`, COOP/CORP and a locked-down Permissions-Policy, all defined in
   [`vercel.json`](vercel.json). `vite preview` and the e2e suite reuse the same headers.
-- Fonts are self-hosted, so there are no third-party requests.
+- Fonts, illustrations and scripts are self-hosted, so there are no third-party requests.
+- The light/dark theme is applied before first paint by an external `public/theme-init.js`, so no
+  inline script is needed.
 - The contact email is assembled at runtime and only shown on request; no phone number is published.
+  The contact form only builds a `mailto:` draft, so nothing is submitted (`form-action 'none'`).
 - [`/.well-known/security.txt`](https://securitytxt.org/) is generated at build time with a rolling
   one-year expiry.
 
