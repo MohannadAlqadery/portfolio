@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sectionIndex, sections } from '@/content/sections'
-import { getEmail } from '@/lib/email'
+import { buildMailto, getEmail } from '@/lib/email'
 import { formatClock } from '@/lib/time'
 
 describe('formatClock', () => {
@@ -29,5 +29,27 @@ describe('sections', () => {
   it('are indexed from 1', () => {
     expect(sectionIndex('profile')).toBe(1)
     expect(sectionIndex('contact')).toBe(sections.length)
+  })
+})
+
+describe('buildMailto', () => {
+  it('fills subject and body, signs with the name, and encodes everything', () => {
+    const url = buildMailto('a@b.c', {
+      name: ' Sam ',
+      topic: 'About a write-up',
+      message: 'Hi & thanks\nfor the SC-200 notes?',
+    })
+    expect(url.startsWith('mailto:a@b.c?subject=')).toBe(true)
+    const params = new URLSearchParams(url.split('?')[1])
+    expect(params.get('subject')).toBe('About a write-up · from Sam')
+    expect(params.get('body')).toBe('Hi & thanks\r\nfor the SC-200 notes?\r\n\r\n– Sam')
+  })
+
+  it('leaves the signature out without a name', () => {
+    const params = new URLSearchParams(
+      buildMailto('a@b.c', { topic: 'Just saying hello', message: 'Hello' }).split('?')[1],
+    )
+    expect(params.get('subject')).toBe('Just saying hello')
+    expect(params.get('body')).toBe('Hello')
   })
 })
