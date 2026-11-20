@@ -1,4 +1,4 @@
-import { m, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { m, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
 import { Section } from '@/components/layout/Section'
 import { Chip } from '@/components/ui/Chip'
@@ -6,6 +6,7 @@ import { StatusDot } from '@/components/ui/StatusDot'
 import { education } from '@/content/education'
 import { KIND_LABEL, timeline, type TimelineEntry } from '@/content/timeline'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useScrollProgress } from '@/hooks/useScrollProgress'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 
@@ -95,7 +96,7 @@ function EntryText({ entry, index }: { entry: TimelineEntry; index: number }) {
 function Trace() {
   const ref = useRef<HTMLDivElement>(null)
   const reduced = usePrefersReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.85', 'end 0.6'] })
+  const scrollYProgress = useScrollProgress(ref, { start: 0.85, end: 0.6 })
   const drawn = useTransform(scrollYProgress, [0, 1], [0, 1])
   const pathStyle = reduced ? {} : { pathLength: drawn }
   const phoneHeight = count * 168

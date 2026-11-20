@@ -1,6 +1,7 @@
-import { m, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { m, useTransform, type MotionValue } from 'motion/react'
 import { useRef, type ElementType } from 'react'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useScrollProgress } from '@/hooks/useScrollProgress'
 
 type ScrollRevealTextProps = {
   text: string
@@ -42,7 +43,7 @@ export function ScrollRevealText({
 }: ScrollRevealTextProps) {
   const ref = useRef<HTMLElement>(null)
   const reducedMotion = usePrefersReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.85', 'end 0.55'] })
+  const scrollYProgress = useScrollProgress(ref, { start: 0.85, end: 0.55 })
   const words = text.split(/\s+/)
 
   return (
