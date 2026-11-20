@@ -4,7 +4,8 @@ import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
-import { TrafficCrowdLoader } from '@/features/crowd/TrafficCrowdLoader'
+import { StatusDot } from '@/components/ui/StatusDot'
+import { SignalFieldLoader } from '@/features/signal-field/SignalFieldLoader'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail, openMailto } from '@/lib/email'
@@ -18,7 +19,7 @@ function FooterHeading({ children }: { children: string }) {
 
 /**
  * The footer is the last scene: an index and contact band, a big sign-off, then the "traffic"
- * band with a crowd walking past a giant watermark. As it scrolls into view its contents rise
+ * signal field (the name as a live dot matrix) and a status strip. As it scrolls into view its contents rise
  * from behind the page's edge, as if the page were lifting off them (CSS scroll timeline).
  */
 export function SiteFooter() {
@@ -134,25 +135,26 @@ export function SiteFooter() {
           </div>
         </Container>
 
-        {/* The traffic band: always white, like a page from a sketchbook, in both themes. */}
-        <div className="relative h-[15rem] overflow-hidden bg-[#fbfbf9] sm:h-[20rem] md:h-[24rem]">
-          <p
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-[2%] text-center font-display text-[clamp(5rem,21vw,20rem)] leading-[0.8] font-extrabold tracking-[-0.04em] text-[#e7e7e3] uppercase font-stretch-[80%] select-none"
-          >
-            {firstName}.
-          </p>
-          <TrafficCrowdLoader />
-        </div>
+        {/* The signal field: the name as a live dot matrix, with traffic streaming through it. */}
+        <Container>
+          <div className="relative h-[clamp(8.5rem,26vw,24rem)] border-y border-line">
+            <SignalFieldLoader />
+          </div>
+        </Container>
 
+        {/* Status strip: the one place the green "live" light belongs in the footer. */}
         <Container
           data-version={__APP_VERSION__}
           data-build={__BUILD_SHA__}
-          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] label text-fg-subtle"
+          className="grid gap-x-6 gap-y-2 py-5 pb-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] label text-fg-subtle md:grid-cols-3 md:items-center md:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
         >
-          <p>Finally, some traffic on my site.</p>
-          <p>
-            © {__BUILD_DATE__.slice(0, 4)} {site.name} · Updated{' '}
+          <p className="flex items-center gap-2">
+            <StatusDot pulse />
+            All systems normal
+          </p>
+          <p className="md:text-center">Finally, some traffic on my site.</p>
+          <p className="md:text-right">
+            © {__BUILD_DATE__.slice(0, 4)} {site.name} · build {__BUILD_SHA__} ·{' '}
             <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
           </p>
         </Container>

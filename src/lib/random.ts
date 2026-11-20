@@ -1,4 +1,4 @@
-/** Seeded randomness shared by generative pieces (hero monogram, footer crowd). */
+/** Seeded randomness shared by generative pieces (hero monogram, footer signal field). */
 
 /** Small deterministic PRNG (mulberry32), so a seed always draws the same card. */
 export function createRandom(seed: number): () => number {

@@ -62,9 +62,17 @@ export function AsciiMonogram({ className, seed = 7 }: { className?: string; see
     // Each row settles at its own time: a scan from top to bottom with some jitter.
     const rowAt = settled.map((_, y) => 120 + (y / GRID_ROWS) * 900 + random() * 260)
 
+    let lastSwap = -Infinity
     const decrypt = (now: number) => {
       start ??= now
       const elapsed = now - start
+      // Re-roll the noise every ~50 ms rather than every frame, so the scramble looks the same
+      // at 60, 120 or 144 Hz (and does less work on fast screens).
+      if (elapsed - lastSwap < 50) {
+        frame = requestAnimationFrame(decrypt)
+        return
+      }
+      lastSwap = elapsed
       let done = true
       setGlyphs(
         settled.map((row, y) => {

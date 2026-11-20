@@ -59,7 +59,7 @@ export function CaseFilesSection() {
       }
       intro="Each role logged like an incident: what it was, what I handled, and how it closed. Open a folder to read the case."
     >
-      <ul className="grid grid-cols-2 gap-x-5 gap-y-10 lg:grid-cols-4 lg:gap-x-8">
+      <ul className="grid grid-cols-1 gap-x-5 gap-y-10 min-[22.5rem]:grid-cols-2 lg:grid-cols-4 lg:gap-x-8">
         {cases.map((file) => {
           const isOpen = openId === file.id
           return (

@@ -387,36 +387,6 @@
   }
 }
 
-/* Footer crowd: lanes slide across the band, figures bob as they step, detection boxes pop in. */
-@keyframes crowd-walk {
-  from {
-    transform: translateX(var(--walk-from, -25%));
-  }
-  to {
-    transform: translateX(102%);
-  }
-}
-
-@keyframes crowd-step {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-2.5%);
-  }
-}
-
-@keyframes detect-in {
-  from {
-    opacity: 0;
-    transform: scale(1.12);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
 /* ------------------------------------------------------------------------------------------------
  * Code highlighting
  * Shiki emits `var(--shiki-*)` at build time (css-variables theme); the palette lives here so code
@@ -445,6 +415,29 @@
     -webkit-text-size-adjust: 100%;
     scroll-behavior: smooth;
     scrollbar-color: var(--color-line-strong) var(--color-canvas);
+  }
+
+  /*
+   * Big monitors: everything is sized in rem, so stepping the root size up scales type,
+   * spacing and the page column together. Gated on width AND height, so wide-but-short
+   * ultrawides don't get oversized type. Media queries themselves use the browser default.
+   */
+  @media (min-width: 1800px) and (min-height: 900px) {
+    html {
+      font-size: 112.5%;
+    }
+  }
+
+  @media (min-width: 2400px) and (min-height: 1200px) {
+    html {
+      font-size: 125%;
+    }
+  }
+
+  @media (min-width: 3000px) and (min-height: 1600px) {
+    html {
+      font-size: 150%;
+    }
   }
 
   body {
