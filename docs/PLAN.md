@@ -59,6 +59,12 @@ v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided 
   as layout shift.
 - **Folders** open a case sheet in the page rather than a modal, so content stays indexable and
   no scroll lock is needed.
+- **Footer v2 (after review):** the Open Peeps crowd was replaced by a **signal field**: the name
+  as a canvas dot matrix with packets, a scan sweep and a cursor scanner lens, plus an "All systems
+  normal" status strip. Inspired by dot-matrix/particle wordmark and "machined" status footers.
+- **Green = live only (after review):** the accent now appears only on live status dots.
+- **Large screens:** root size steps to 112.5 / 125 / 150% on big, tall monitors; layouts are
+  checked across 22 viewports from 280 px phones to 4K.
 
 ### Phases (one branch + PR each)
 

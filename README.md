@@ -17,15 +17,17 @@ v2), information architecture and delivery phases.
 - **Sections:** profile (word-by-word scroll reveal), case files as document folders,
   credentials, toolkit as staggered chip columns, a signal-trace timeline, and contact with a
   `mailto:` draft form.
-- **Footer:** a walking crowd with detection boxes in front of a giant watermark. The figures are
-  [Open Peeps](https://www.openpeeps.com) by Pablo Stanley (CC0); see
-  `src/features/crowd/peeps/README.md`.
+- **Footer:** a signal field. `MOHANNAD.` is drawn as a live dot matrix on a canvas, with packets
+  of "traffic" streaming through, a scan sweep, and a cursor "scanner lens" that decrypts dots into
+  hex (a tap ripples on touch). Below it, an "All systems normal" status strip.
 - **Ask terminal:** a scripted assistant (corner pill, or the backtick key) that answers from the
   site's own content. No AI and no network.
 - **Field notes** at `/notes`: MDX write-ups, pre-rendered as static HTML.
 
-Every animation honours Reduce Motion, and the heavier pieces (crowd, terminal, palette) load
-only when they are needed.
+Every animation honours Reduce Motion and runs on time, not frames (same speed at 60, 120 or
+144 Hz). Layouts are tested from a 280 px folded phone to 4K, and large, tall monitors scale the
+whole page up. The heavier pieces (signal field, terminal, palette) load only when they are
+needed, and green is reserved for live status.
 
 ## Getting started
 
