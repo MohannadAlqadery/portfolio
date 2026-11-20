@@ -149,7 +149,12 @@ describe('ContactSection', () => {
     expect(container.textContent).not.toContain(address)
 
     await user.click(screen.getByRole('button', { name: /Reveal address/ }))
-    expect(screen.getByText(address)).toBeInTheDocument()
+    // Screen readers get the address at once; on screen it decrypts, then settles into plain,
+    // selectable text.
+    expect(screen.getAllByText(address).length).toBeGreaterThan(0)
+    expect(
+      await screen.findByText(address, { selector: '.select-all' }, { timeout: 3000 }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Write/ })).toHaveAttribute('href', `mailto:${address}`)
 
     await user.click(screen.getByRole('button', { name: /Copy/ }))

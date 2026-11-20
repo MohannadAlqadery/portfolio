@@ -44,7 +44,8 @@ function install() {
   })
 }
 
-function subscribe(onChange: () => void) {
+/** Calls `onChange` on every route change (link, back / forward). Returns an unsubscribe. */
+export function subscribeToRoute(onChange: () => void): () => void {
   install()
   listeners.add(onChange)
   return () => {
@@ -68,7 +69,7 @@ const getServerSnapshot = () =>
   typeof window === 'undefined' ? normalisePath(serverPath) : getSnapshot()
 
 export function usePathname(): string {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  return useSyncExternalStore(subscribeToRoute, getSnapshot, getServerSnapshot)
 }
 
 /**
