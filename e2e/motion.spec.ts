@@ -38,6 +38,8 @@ test.describe('open and close motion', () => {
     const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] })
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
     await page.goto(baseURL ?? '/')
+    // The pill is centred, so a late web-font swap would move it too: measure after fonts load.
+    await page.evaluate(() => document.fonts.ready)
     const gap = await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth)
     expect(gap).toBeGreaterThan(0)
 
@@ -49,10 +51,12 @@ test.describe('open and close motion', () => {
     const before = await logoX()
     await page.keyboard.press('ControlOrMeta+k')
     await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible()
-    expect(await logoX()).toBe(before)
+    // On the palette's first open the dialog library can hide the scrollbar a moment before it
+    // marks the page as locked; the pill settles back within a frame or two. Check where it rests.
+    await expect.poll(logoX, { timeout: 1000 }).toBe(before)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog', { name: 'Command palette' })).toHaveCount(0)
-    expect(await logoX()).toBe(before)
+    await expect.poll(logoX, { timeout: 1000 }).toBe(before)
     await browser.close()
   })
 
@@ -124,5 +128,30 @@ test.describe('open and close motion', () => {
     expect(height).toBeLessThan((page.viewportSize()?.height ?? 0) * 2.2)
     await expect(page.getByRole('heading', { level: 2, name: /Hi, I’m/ })).toBeVisible()
     await expect(page.getByText('The initials MA drawn in ASCII characters')).toBeAttached()
+  })
+
+  test('profile lead lights up word by word while scrolling', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    const lead = page.locator('#profile p', { hasText: 'SOC L1 analyst at REACH' })
+    const words = lead.locator('span')
+    const opacity = (i: number) =>
+      words.nth(i).evaluate((el) => Number(getComputedStyle(el).opacity))
+    const count = await words.count()
+    expect(count).toBeGreaterThan(20)
+
+    // Paragraph just entering the viewport: the start is lighting up, the end is still dim.
+    await lead.evaluate((el) => {
+      const top = el.getBoundingClientRect().top + scrollY
+      window.scrollTo(0, top - innerHeight * 0.8)
+    })
+    await expect.poll(() => opacity(count - 1)).toBeLessThan(0.5)
+
+    // Read through: every word fully lit.
+    await lead.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      window.scrollTo(0, r.bottom + scrollY - innerHeight * 0.3)
+    })
+    await expect.poll(() => opacity(count - 1)).toBeGreaterThan(0.95)
   })
 })
