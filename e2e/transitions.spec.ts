@@ -106,3 +106,41 @@ test.describe('accent colour', () => {
     }
   })
 })
+
+test.describe('section label in the pill', () => {
+  test('follows the page again after chat → notes → home', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the label is hidden on phones')
+    const label = page.locator('header span.w-36 .sr-only')
+    await page.goto('/')
+    await expect(label).toHaveText('00 · Index')
+
+    // Open the chat and go to the notes from it.
+    await page.getByRole('button', { name: /^Ask/ }).click()
+    const terminal = page.getByRole('dialog', { name: /mohannad@soc/ })
+    const input = terminal.getByRole('textbox', { name: /Ask a question/ })
+    await input.fill('notes')
+    await input.press('Enter')
+    await expect(page).toHaveURL(/\/notes$/)
+    await expect(label).toHaveText('✎ · Field notes')
+
+    // Back home with the wordmark, then scroll: the label tracks the real sections.
+    await page
+      .getByRole('banner')
+      .getByRole('link', { name: /^Mohannad/ })
+      .click()
+    await expect(page).toHaveURL(/\/$/)
+    await expect(label).toHaveText('00 · Index')
+    for (const [id, text] of [
+      ['toolkit', '04 · Toolkit'],
+      ['credentials', '03 · Credentials'],
+      ['contact', '06 · Contact'],
+    ] as const) {
+      await page
+        .locator(`#${id}`)
+        .evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 40))
+      await expect(label).toHaveText(text)
+    }
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect(label).toHaveText('00 · Index')
+  })
+})

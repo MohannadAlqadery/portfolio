@@ -153,9 +153,24 @@ export type Cable = {
   firewall: number
 }
 
+/**
+ * A wall-mounted security camera: on the CCTV asset (a pair at the shopfront corners, instead of a
+ * sign) and one over each access-controlled door. `dir` is the way it faces; `front` the index of
+ * the storefront it belongs to.
+ */
+export type Camera = {
+  x: number
+  y: number
+  dir: 1 | -1
+  phase: number
+  front: number
+  size: number
+}
+
 export type City = {
   towers: Tower[]
   storefronts: Storefront[]
+  cameras: Camera[]
   panels: Panel[]
   cables: Cable[]
   ticker: { x: number; y: number; w: number; h: number } | null
@@ -287,7 +302,28 @@ export function buildCity(span: number, seed = 11): City {
     })
   }
 
-  return { towers, storefronts, panels, cables, ticker }
+  const cameras: Camera[] = []
+  storefronts.forEach((f, k) => {
+    const t = towers[f.tower]
+    if (!t) return
+    const y = GROUND - SHOP_H + 0.018
+    if (f.kind === 'asset' && f.asset === 'CCTV') {
+      cameras.push({ x: t.x + 0.03, y, dir: 1, phase: random() * 6, front: k, size: 1 })
+      cameras.push({ x: t.x + t.w - 0.03, y, dir: -1, phase: random() * 6, front: k, size: 1 })
+    } else if (f.kind === 'access') {
+      const dir = random() < 0.5 ? 1 : -1
+      cameras.push({
+        x: f.x - dir * f.door * 0.9,
+        y,
+        dir,
+        phase: random() * 6,
+        front: k,
+        size: 0.75,
+      })
+    }
+  })
+
+  return { towers, storefronts, cameras, panels, cables, ticker }
 }
 
 /** Top of a tower's body (before its crown), in scene heights from the top. */

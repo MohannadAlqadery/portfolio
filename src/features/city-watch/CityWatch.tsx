@@ -28,6 +28,7 @@ import {
   type Palette,
   type Severity,
   type Storefront,
+  type Camera,
   type Tokens,
   type Tower,
   type Walker,
@@ -279,7 +280,8 @@ function renderStatic(city: City, w: number, H: number, dpr: number, p: Palette)
     if (front.kind === 'asset') {
       ctx.fillStyle = p.shopGlow
       ctx.fillRect(x + tw * 0.06, glassY, tw * 0.88, glassH)
-      drawSign(ctx, front.asset, front.vertical, front.x * H, top + SHOP_H * H * 0.08, H, p)
+      if (front.asset !== 'CCTV')
+        drawSign(ctx, front.asset, front.vertical, front.x * H, top + SHOP_H * H * 0.08, H, p)
     } else {
       // Tinted glass with two soft diagonal reflections, mullions and a door.
       const gx = x + tw * 0.06
@@ -424,7 +426,7 @@ type TowerJob =
       start: number
       dur: number
       fixed: number
-      flashes: { i: number; at: number }[]
+      flashes: { i: number; at: number; sev: Severity }[]
     }
   | {
       kind: 'cve'
@@ -636,14 +638,7 @@ export default function CityWatch() {
         if (!tw) continue
         for (const [wi, { sev, since }] of set) {
           const r = windowRect(tw, wi, H)
-          ctx.fillStyle = sevColor(p, sev)
-          ctx.globalAlpha = pulse * (reduce ? 1 : ease((t - since) / 600))
-          if (p.night) {
-            ctx.shadowColor = sevColor(p, sev)
-            ctx.shadowBlur = H * 0.02
-          }
-          ctx.fillRect(r.x, r.y, Math.max(2, r.w), Math.max(2, r.h))
-          ctx.shadowBlur = 0
+          drawWindowGlow(r, sevColor(p, sev), pulse * (reduce ? 1 : ease((t - since) / 700)))
         }
       }
       ctx.globalAlpha = 1
@@ -675,24 +670,25 @@ export default function CityWatch() {
           }
           const set = vulns.get(job.tower)
           if (set && !reduce) {
-            for (const wi of [...set.keys()]) {
+            for (const [wi, v] of [...set.entries()]) {
               if (windowRect(tw, wi, H).y > y) {
                 set.delete(wi)
                 job.fixed++
                 patched++
-                job.flashes.push({ i: wi, at: t })
+                job.flashes.push({ i: wi, at: t, sev: v.sev })
               }
             }
             if (!set.size) vulns.delete(job.tower)
           }
+          // Patched windows ease from their severity colour to a clean white, then fade out
+          // slowly, instead of blinking off.
           for (const f of job.flashes) {
-            const age = (t - f.at) / 500
-            if (age > 1) continue
+            const age = (t - f.at) / 1600
+            if (age >= 1) continue
             const r = windowRect(tw, f.i, H)
-            ctx.fillStyle = p.ink
-            ctx.globalAlpha = 1 - age
-            ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4)
-            ctx.globalAlpha = 1
+            const toWhite = ease(age / 0.3)
+            const fade = 1 - ease((age - 0.3) / 0.7)
+            drawWindowGlow(r, mix(sevColor(p, f.sev), p.ink, toWhite), fade)
           }
           const label =
             k < 1
@@ -729,8 +725,13 @@ export default function CityWatch() {
         ctx.strokeStyle = p.inkFaint
         ctx.lineWidth = 1
         const box = H * 0.022
-        ctx.fillRect(fw.x * H - box / 2, fw.y * H - box / 2, box, box)
-        ctx.strokeRect(fw.x * H - box / 2, fw.y * H - box / 2, box, box)
+        ctx.beginPath()
+        ctx.roundRect(fw.x * H - box / 2, fw.y * H - box / 2, box, box, box * 0.25)
+        ctx.fill()
+        ctx.stroke()
+        // A small shield bar across the node.
+        ctx.fillStyle = alpha(p.ink, p.night ? 0.5 : 0.6)
+        ctx.fillRect(fw.x * H - box * 0.25, fw.y * H - 0.5, box * 0.5, 1)
         ctx.fillStyle = p.inkFaint
         ctx.font = `600 ${fontSize * 0.75}px ${MONO}`
         ctx.textAlign = 'center'
@@ -765,10 +766,27 @@ export default function CityWatch() {
             }
             continue
           }
-          const pt = cablePoint(cable, s)
-          ctx.fillStyle = bad ? p.critical : p.ink
-          ctx.globalAlpha = bad ? 1 : 0.8
-          ctx.fillRect(pt.x * H - 1.5, pt.y * H - 1.5, 3, 3)
+          // Fade in after leaving one roof and out before reaching the next.
+          const edge = ease(s / 0.08) * ease((1 - s) / 0.08)
+          const nearWall = bad ? 1 - ease((s - (cable.firewall - 0.05)) / 0.05) : 1
+          const tone = bad ? p.critical : p.ink
+          for (let k2 = 3; k2 >= 0; k2--) {
+            const back = cablePoint(cable, Math.max(0, s - k2 * 0.012))
+            ctx.globalAlpha = edge * nearWall * (k2 === 0 ? 0.95 : 0.22 / k2)
+            ctx.fillStyle = tone
+            ctx.beginPath()
+            ctx.arc(back.x * H, back.y * H, k2 === 0 ? 1.7 : 1.2, 0, Math.PI * 2)
+            ctx.fill()
+          }
+          if (p.night && k2Glow(edge * nearWall)) {
+            const pt = cablePoint(cable, s)
+            const g = ctx.createRadialGradient(pt.x * H, pt.y * H, 0, pt.x * H, pt.y * H, 6)
+            g.addColorStop(0, alpha(tone, 0.35 * edge * nearWall))
+            g.addColorStop(1, alpha(tone, 0))
+            ctx.globalAlpha = 1
+            ctx.fillStyle = g
+            ctx.fillRect(pt.x * H - 6, pt.y * H - 6, 12, 12)
+          }
           ctx.globalAlpha = 1
         }
       }
@@ -905,6 +923,20 @@ export default function CityWatch() {
           ctx.shadowBlur = 0
           ctx.globalAlpha = 1
         }
+      }
+
+      for (const cam of L.cameras) {
+        const ev = siteEvents.find((e) => e.front === cam.front)
+        const f = fronts[cam.front]
+        const alert =
+          ev && f?.kind === 'asset'
+            ? { color: sevColor(p, ev.sev), k: presence(t, ev.start, ev.resolveAt, 300, 500) }
+            : null
+        drawCamera(cam, t, alert)
+      }
+      for (const f of fronts) {
+        if (f.kind !== 'asset' || f.asset !== 'FREE WI-FI') continue
+        drawWifi(f.x * H, (GROUND - SHOP_H) * H + SHOP_H * H * 0.08 - H * 0.012, t)
       }
 
       // People: far rows first, their reflections in the wet street at night.
@@ -1066,7 +1098,9 @@ export default function CityWatch() {
         if (!f) continue
         const shown = reduce ? 1 : presence(t, ev.start, ev.end, 360, 600)
         const toThen = reduce ? 1 : ease((t - ev.resolveAt) / 450)
-        const anchorX = f.kind === 'access' ? readerOf(f, H).x : f.x * H
+        const cam = L.cameras.find((c) => c.front === ev.front)
+        const anchorX =
+          f.kind === 'access' ? readerOf(f, H).x : f.asset === 'CCTV' && cam ? cam.x * H : f.x * H
         const anchorY = (GROUND - SHOP_H) * H + SHOP_H * H * 0.08
         card(anchorX, anchorY - H * 0.012, ev.first, ev.then, ev.sev, shown, toThen)
       }
@@ -1135,6 +1169,106 @@ export default function CityWatch() {
         ctx.fillText(lines[0], x + 9, y + lh + 2)
         ctx.fillStyle = resolved ? p.inkSoft : sevColor(p, sev)
         ctx.fillText(lines[1], x + 9, y + lh * 2 + 2)
+      }
+      ctx.globalAlpha = 1
+    }
+
+    /** A lit window: rounded, with a soft halo at night. */
+    const drawWindowGlow = (
+      r: { x: number; y: number; w: number; h: number },
+      color: string,
+      strength: number,
+    ) => {
+      if (strength <= 0) return
+      const w = Math.max(2.5, r.w)
+      const h = Math.max(2.5, r.h)
+      const cx = r.x + w / 2
+      const cy = r.y + h / 2
+      if (p.night) {
+        const rad = Math.max(w, h) * 2.2
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
+        g.addColorStop(0, alpha(color, 0.4 * strength))
+        g.addColorStop(1, alpha(color, 0))
+        ctx.fillStyle = g
+        ctx.fillRect(cx - rad, cy - rad, rad * 2, rad * 2)
+      }
+      ctx.globalAlpha = strength
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.roundRect(r.x, r.y, w, h, Math.min(w, h) * 0.3)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+    const k2Glow = (v: number) => v > 0.02
+
+    /**
+     * A wall-mounted camera: bracket, housing with a sunshade, lens and a status LED. It pans
+     * slowly; the LED breathes, and turns to the alert colour while its CCTV event is open.
+     */
+    const drawCamera = (cam: Camera, t: number, alert: { color: string; k: number } | null) => {
+      const u = H * 0.03 * cam.size
+      const x = cam.x * H
+      const y = cam.y * H
+      const body = p.night ? mix(p.sky, p.ink, 0.22) : mix(p.ink, p.sky, 0.3)
+      // Bracket from the wall.
+      ctx.strokeStyle = body
+      ctx.lineWidth = Math.max(1, u * 0.12)
+      ctx.beginPath()
+      ctx.moveTo(x, y - u * 0.35)
+      ctx.lineTo(x, y)
+      ctx.lineTo(x + cam.dir * u * 0.35, y)
+      ctx.stroke()
+      // Housing, tilted down and panning.
+      const pan = reduce ? 0 : Math.sin(t / 2800 + cam.phase) * 0.22
+      const angle = cam.dir * (0.32 + pan)
+      ctx.save()
+      ctx.translate(x + cam.dir * u * 0.35, y)
+      ctx.rotate(angle)
+      ctx.scale(cam.dir, 1)
+      ctx.fillStyle = body
+      ctx.beginPath()
+      ctx.roundRect(-u * 0.15, -u * 0.22, u * 1.05, u * 0.44, u * 0.12)
+      ctx.fill()
+      // Sunshade lip over the top.
+      ctx.fillRect(-u * 0.05, -u * 0.32, u * 1.2, u * 0.1)
+      if (p.night) {
+        ctx.fillStyle = alpha(p.ink, 0.35)
+        ctx.fillRect(-u * 0.05, -u * 0.32, u * 1.2, 1)
+      }
+      // Lens.
+      ctx.fillStyle = p.night ? mix(p.sky, '#000000', 0.7) : p.ink
+      ctx.beginPath()
+      ctx.arc(u * 0.9, 0, u * 0.15, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = alpha(p.ink, p.night ? 0.7 : 0.4)
+      ctx.fillRect(u * 0.93, -u * 0.06, 1, 1)
+      // Status LED near the back.
+      const breathe = reduce ? 0.7 : 0.45 + 0.35 * (0.5 + 0.5 * Math.sin(t / 900 + cam.phase))
+      ctx.fillStyle = alert ? mix(p.inkSoft, alert.color, alert.k) : p.inkSoft
+      ctx.globalAlpha = alert ? Math.max(breathe, alert.k) : breathe
+      ctx.beginPath()
+      ctx.arc(u * 0.1, 0, Math.max(0.9, u * 0.06), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+      ctx.restore()
+    }
+
+    /** A Wi-Fi access point above its sign, sending out soft rings. */
+    const drawWifi = (cx: number, cy: number, t: number) => {
+      const u = H * 0.012
+      ctx.fillStyle = p.night ? mix(p.sky, p.ink, 0.25) : mix(p.ink, p.sky, 0.3)
+      ctx.beginPath()
+      ctx.roundRect(cx - u, cy - u * 0.45, u * 2, u * 0.9, u * 0.3)
+      ctx.fill()
+      ctx.strokeStyle = p.night ? p.ink : p.inkSoft
+      ctx.lineWidth = 1
+      for (let ring = 0; ring < 3; ring++) {
+        const k = reduce ? (ring + 1) / 4 : (t / 2200 + ring / 3) % 1
+        const a = Math.sin(Math.PI * k) * (p.night ? 0.55 : 0.45)
+        ctx.globalAlpha = a
+        ctx.beginPath()
+        ctx.arc(cx, cy - u * 0.4, u * (1.1 + k * 2.6), Math.PI * 1.2, Math.PI * 1.8)
+        ctx.stroke()
       }
       ctx.globalAlpha = 1
     }

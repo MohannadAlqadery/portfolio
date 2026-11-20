@@ -60,17 +60,22 @@ test.describe('ask terminal', () => {
     // input shows, frame by frame, so the check doesn't depend on catching a moment.
     await input.evaluate((el: HTMLInputElement) => {
       const seen: string[] = []
-      ;(window as unknown as { seen: string[] }).seen = seen
+      const w = window as unknown as { seen: string[]; thought: boolean }
+      w.seen = seen
+      w.thought = false
       const watch = () => {
         if (el.value && seen.at(-1) !== el.value) seen.push(el.value)
+        if (document.querySelector('[data-thinking]')) w.thought = true
         if (el.isConnected) requestAnimationFrame(watch)
       }
       watch()
     })
     await terminal.getByRole('button', { name: 'What do you do?' }).click()
-    // Then the terminal "thinks", and the answer arrives.
-    await expect(terminal.locator('[data-thinking]')).toBeVisible()
+    // Then the terminal "thinks" (recorded by the watcher above), and the answer arrives.
     await expect(terminal.getByRole('log')).toContainText('I’m Mohannad Alqadery, a SOC analyst.')
+    expect(await page.evaluate(() => (window as unknown as { thought: boolean }).thought)).toBe(
+      true,
+    )
     await expect(terminal.locator('[data-thinking]')).toHaveCount(0)
     await expect(input).toHaveValue('')
     const typed = await page.evaluate(() => (window as unknown as { seen: string[] }).seen)
@@ -79,12 +84,25 @@ test.describe('ask terminal', () => {
     ).toBe(true)
     expect(typed).toContain('What do you do?')
 
-    // Answer lines fade in one after another (each line starts later than the one before).
+    // The answer is written out behind a cursor, then the cursor goes away.
     await input.fill('help')
     await input.press('Enter')
-    const lines = terminal.getByRole('log').locator('p', { hasText: /whoami|certs/ })
-    await expect(lines.first()).toBeVisible()
-    await expect.poll(() => lines.last().evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+    const caret = terminal.locator('[data-caret]')
+    await expect(caret).toBeVisible()
+    const log = terminal.getByRole('log')
+    const visibleText = () =>
+      log.evaluate((el) =>
+        [...el.querySelectorAll('p > span[aria-hidden]')].map((s) => s.textContent).join(' '),
+      )
+    const early = await visibleText()
+    await expect(caret).toHaveCount(0, { timeout: 6000 })
+    const done = await visibleText()
+    expect(done.length).toBeGreaterThan(early.length)
+    expect(done).toContain('clear the screen')
+    // Screen readers get each answer whole, not character by character.
+    await expect(
+      log.locator('.sr-only', { hasText: 'Ask in plain words, or use a command:' }),
+    ).toHaveCount(1)
   })
 
   test('answers at once with Reduce Motion', async ({ page }) => {

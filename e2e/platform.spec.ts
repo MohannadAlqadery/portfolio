@@ -41,7 +41,8 @@ test.describe('metadata', () => {
     await expect(page).toHaveTitle(/Mohannad Alqadery/)
     await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
       'content',
-      /^https?:\/\/.+\/og\.png$/,
+      // Versioned by content hash, so link previews refetch the card whenever it changes.
+      /^https?:\/\/.+\/og\.png\?v=[0-9a-f]{8}$/,
     )
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /^https?:\/\//)
 

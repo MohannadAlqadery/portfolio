@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import type { Plugin } from 'vite'
 import { education } from '../src/content/education.ts'
 import { site } from '../src/content/site.ts'
@@ -32,7 +34,17 @@ export function personJsonLd(siteUrl: string): string {
 }
 
 /**
- * - Replaces `%SITE_URL%` in index.html (canonical, Open Graph URLs).
+ * Short content hash of the social preview image. Its URL carries it (`og.png?v=…`), so when the
+ * card changes, link previews (WhatsApp, LinkedIn, X…) see a new URL and fetch it again instead of
+ * showing their cached copy.
+ */
+export function ogVersion(): string {
+  const png = readFileSync(new URL('../public/og.png', import.meta.url))
+  return createHash('sha256').update(png).digest('hex').slice(0, 8)
+}
+
+/**
+ * - Replaces `%SITE_URL%` and `%OG_VERSION%` in index.html (canonical, Open Graph URLs).
  * - Injects JSON-LD structured data.
  * - Emits robots.txt and /.well-known/security.txt at build time (client build only).
  */
@@ -47,7 +59,7 @@ export function seo({ siteUrl, buildDate }: SeoOptions): Plugin {
       order: 'pre',
       handler(html) {
         return {
-          html: html.replaceAll('%SITE_URL%', siteUrl),
+          html: html.replaceAll('%SITE_URL%', siteUrl).replaceAll('%OG_VERSION%', ogVersion()),
           tags: [
             {
               tag: 'script',

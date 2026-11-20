@@ -28,17 +28,63 @@ const TONE: Record<NonNullable<Line['tone']>, string> = {
 }
 
 const EASE = [0.16, 1, 0.3, 1] as const
-/** How long the terminal "thinks" before answering, and the pause between answer lines (ms). */
-const THINK = 340
-const STAGGER = 55
+/** How long the terminal "thinks" before it starts writing (ms). */
+const THINK = 480
+/**
+ * Writing speed: an answer is written out at a calm pace (at least ~65 characters a second), but
+ * never takes longer than about 2.8 s, so long answers like `help` don't drag.
+ */
+const MIN_CPS = 65
+const MAX_WRITE_MS = 2800
 /** Per-character delay when a suggestion chip types itself into the input (ms). */
 const KEY = 22
+
+/** Characters in an answer, as the writer counts them. */
+function charsOf(lines: readonly Line[]): number {
+  return lines.reduce((n, l) => n + lengthOf(l), 0)
+}
+
+/** A decrypting line isn't typed: it counts as one step, then decrypts on its own. */
+const lengthOf = (line: Line) => (line.decrypt ? 1 : line.text.length)
+
+/**
+ * The lines of an entry as they should show right now: all of them once written, or, while it is
+ * being written, the lines reached so far, the last one cut at the writer's position.
+ */
+function visibleLines(
+  entry: Entry,
+  writing: { id: number; chars: number } | null,
+): { line: Line; text: string; typing: boolean }[] {
+  if (!writing || writing.id !== entry.id)
+    return entry.lines.map((line) => ({ line, text: line.text, typing: false }))
+  const out: { line: Line; text: string; typing: boolean }[] = []
+  let left = Math.floor(writing.chars)
+  for (const line of entry.lines) {
+    if (left <= 0 && out.length > 0) break
+    const len = lengthOf(line)
+    const n = Math.min(len, Math.max(0, left))
+    out.push({
+      line,
+      text: line.decrypt ? line.text : line.text.slice(0, n),
+      typing: n < len,
+    })
+    left -= len
+    if (n < len) break
+  }
+  // Between two lines the cursor waits at the end of the finished one, so it never blinks out
+  // until the whole answer is written.
+  const last = out.at(-1)
+  if (last && Math.floor(writing.chars) < charsOf(entry.lines)) last.typing = true
+  return out
+}
 
 /**
  * A small terminal in the corner: questions or commands in, scripted answers out (see engine.ts).
  * Both sides move like a conversation: a chip types its question into the input, the question
- * slides into the log, the terminal "thinks" for a beat, then the answer fades in line by line
- * while the log scrolls smoothly. With Reduce Motion everything appears at once.
+ * slides into the log, the terminal "thinks" for a beat, then writes the answer out character by
+ * character behind a cursor while the log follows it. Screen readers get each answer whole (the
+ * written-out copy is aria-hidden), sending a new question finishes the current one at once, and
+ * with Reduce Motion everything appears straight away.
  */
 export default function TerminalPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const titleId = useId()
@@ -53,6 +99,10 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
   const [cursor, setCursor] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [offerChips, setOfferChips] = useState(true)
+  /** The entry being written out, and how many of its characters are showing. */
+  const [writing, setWriting] = useState<{ id: number; chars: number; total: number } | null>(
+    () => ({ id: 0, chars: 0, total: charsOf(WELCOME) }),
+  )
 
   const later = useCallback((fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms))
@@ -64,13 +114,39 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
     return () => pending.forEach((t) => window.clearTimeout(t))
   }, [])
 
-  // Keep the newest output in view; glide there unless motion is reduced.
-  const lineCount = log.reduce((n, e) => n + e.lines.length + (e.pending ? 1 : 0), 0)
+  // Write the current answer out, frame by frame (time-based, so 60 and 144 Hz match).
+  const writingId = writing?.id
+  useEffect(() => {
+    if (writingId === undefined) return
+    let frame = 0
+    let last = 0
+    const tick = (now: number) => {
+      const dt = last ? Math.min(now - last, 64) : 16
+      last = now
+      let done = false
+      setWriting((w) => {
+        if (!w || w.id !== writingId) return w
+        const cps = Math.max(MIN_CPS, (w.total / MAX_WRITE_MS) * 1000)
+        const chars = w.chars + (cps * dt) / 1000
+        done = chars >= w.total
+        return done ? null : { ...w, chars }
+      })
+      if (!done) frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [writingId])
+
+  // Keep the newest output in view while it grows, unless the reader has scrolled up to read.
+  const stickRef = useRef(true)
+  const grow = log.reduce((n, e) => n + e.lines.length + (e.pending ? 1 : 0), 0)
+  const shown = Math.floor(writing?.chars ?? 0)
   useEffect(() => {
     const el = logRef.current
-    if (!el || lineCount === 0) return
-    el.scrollTo({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' })
-  }, [lineCount, reduce])
+    if (!el || !stickRef.current || grow === 0) return
+    // Glide to a new entry; while text is being written, keep pace with it directly.
+    el.scrollTo({ top: el.scrollHeight, behavior: reduce || shown > 0 ? 'auto' : 'smooth' })
+  }, [grow, shown, reduce])
 
   const act = (reply: Reply): Line[] => {
     switch (reply.action?.type) {
@@ -100,6 +176,9 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
 
   const run = (input: string) => {
     const reply: Reply = respond(input)
+    stickRef.current = true
+    // A new question finishes whatever is still being written.
+    setWriting(null)
     setHistory((h) => [...h, input])
     if (reply.action?.type === 'clear') {
       setLog([])
@@ -111,12 +190,11 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
     // The question goes in at once; the answer follows after a short "thinking" beat.
     setLog((current) => [...current, { id: entryId, input, lines: [], pending: !reduce }])
     const answer = () => {
-      const extra = act(reply)
+      const lines = [...reply.lines, ...act(reply)]
       setLog((current) =>
-        current.map((e) =>
-          e.id === entryId ? { ...e, lines: [...reply.lines, ...extra], pending: false } : e,
-        ),
+        current.map((e) => (e.id === entryId ? { ...e, lines, pending: false } : e)),
       )
+      if (!reduce) setWriting({ id: entryId, chars: 0, total: charsOf(lines) })
       setBusy(false)
     }
     if (reduce) answer()
@@ -172,14 +250,14 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
     }
   }
 
-  const lineMotion = (i: number) =>
-    reduce
-      ? {}
-      : {
-          initial: { opacity: 0, y: 6, filter: 'blur(3px)' },
-          animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-          transition: { duration: 0.32, ease: EASE, delay: i * (STAGGER / 1000) },
-        }
+  // Each line eases in as the writing reaches it.
+  const lineMotion = reduce
+    ? {}
+    : {
+        initial: { opacity: 0, y: 3 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.25, ease: EASE },
+      }
 
   return (
     // A non-modal <dialog>: the page stays usable while the terminal is open.
@@ -214,6 +292,10 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
         aria-live="polite"
         aria-busy={busy}
         data-lenis-prevent
+        onScroll={(e) => {
+          const el = e.currentTarget
+          stickRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+        }}
         className="flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 font-mono text-[0.78rem] leading-relaxed"
       >
         {log.map((entry) => (
@@ -253,26 +335,35 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
                 ))}
               </m.p>
             ) : null}
-            {entry.lines.map((line, i) => (
+            {visibleLines(entry, reduce ? null : writing).map(({ line, text, typing }, i) => (
               <m.p
                 key={i}
-                {...lineMotion(entry.id === 0 ? i + 2 : i)}
+                {...lineMotion}
                 className={cn(
                   'break-words whitespace-pre-wrap',
                   TONE[line.tone ?? 'plain'],
                   line.indent && 'mb-1 pl-[2ch]',
                 )}
               >
-                {line.decrypt ? (
-                  <DecryptText
-                    text={line.text}
-                    duration={900}
-                    delay={120}
-                    glyphs="abcdefghijklmnopqrstuvwxyz0123456789#$%&*+=?"
-                  />
-                ) : (
-                  line.text
-                )}
+                <span className="sr-only">{line.text}</span>
+                <span aria-hidden="true">
+                  {line.decrypt && !typing ? (
+                    <DecryptText
+                      text={line.text}
+                      duration={900}
+                      delay={120}
+                      glyphs="abcdefghijklmnopqrstuvwxyz0123456789#$%&*+=?"
+                    />
+                  ) : (
+                    text
+                  )}
+                  {typing ? (
+                    <span
+                      data-caret
+                      className="ml-px inline-block h-[1.05em] w-[0.55ch] translate-y-[0.2em] animate-caret bg-fg-muted"
+                    />
+                  ) : null}
+                </span>
               </m.p>
             ))}
           </div>
