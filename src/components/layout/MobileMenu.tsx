@@ -48,7 +48,14 @@ export function MobileMenu({
     firstLinkRef.current?.focus()
     // Lock both: iOS Safari scrolls the root element, other browsers the body.
     const { body, documentElement: root } = document
-    const previous = [body.style.overflow, root.style.overflow] as const
+    const previous = [body.style.overflow, root.style.overflow, body.style.paddingRight] as const
+    // Hiding a desktop scrollbar widens the page; pad by its width so nothing moves, and tell
+    // fixed elements (the header) the same gap through --scroll-lock-gap.
+    const gap = window.innerWidth - root.clientWidth
+    if (gap > 0) {
+      body.style.paddingRight = `${gap}px`
+      root.style.setProperty('--scroll-lock-gap', `${gap}px`)
+    }
     body.style.overflow = 'hidden'
     root.style.overflow = 'hidden'
 
@@ -65,6 +72,8 @@ export function MobileMenu({
     return () => {
       body.style.overflow = previous[0]
       root.style.overflow = previous[1]
+      body.style.paddingRight = previous[2]
+      root.style.removeProperty('--scroll-lock-gap')
       window.removeEventListener('keydown', onKeyDown)
       desktop?.removeEventListener('change', onBreakpoint)
     }

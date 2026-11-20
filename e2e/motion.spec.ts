@@ -28,6 +28,48 @@ test.describe('open and close motion', () => {
     await expect(dialog).toHaveCSS('animation-name', 'panel-in')
   })
 
+  test('the nav bar does not shift when Ctrl K or the menu locks scrolling', async ({
+    playwright,
+    baseURL,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'desktop scrollbars only')
+    // Headless browsers hide scrollbars by default; real desktop ones take up space.
+    const browser = await playwright.chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] })
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+    await page.goto(baseURL ?? '/')
+    const gap = await page.evaluate(() => window.innerWidth - document.documentElement.clientWidth)
+    expect(gap).toBeGreaterThan(0)
+
+    const logoX = () =>
+      page
+        .locator('header a')
+        .first()
+        .evaluate((el) => el.getBoundingClientRect().x)
+    const before = await logoX()
+    await page.keyboard.press('ControlOrMeta+k')
+    await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible()
+    expect(await logoX()).toBe(before)
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Command palette' })).toHaveCount(0)
+    expect(await logoX()).toBe(before)
+
+    // A narrow desktop window uses the menu, which locks scrolling too.
+    await page.setViewportSize({ width: 1024, height: 800 })
+    const menuX = () =>
+      page
+        .locator('button[aria-controls]')
+        .first()
+        .evaluate((el) => el.getBoundingClientRect().x)
+    const closed = await menuX()
+    await page.getByRole('button', { name: 'Open menu' }).click()
+    await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
+    expect(await menuX()).toBe(closed)
+    await page.getByRole('button', { name: 'Close menu' }).click()
+    expect(await menuX()).toBe(closed)
+    await browser.close()
+  })
+
   test('palette skips the animation with Reduce Motion', async ({ page }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
