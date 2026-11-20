@@ -78,38 +78,35 @@ describe('content integrity', () => {
 })
 
 describe('CaseFilesSection', () => {
-  it('opens active cases by default and toggles others', async () => {
-    const user = userEvent.setup()
+  const folder = (name: RegExp) => screen.getByRole('button', { name })
+
+  it('opens the active case by default, as a folder and a case sheet', () => {
     render(<CaseFilesSection />)
-
-    const active = screen.getByRole('button', { name: /SOC L1 Analyst/ })
-    const intern = screen.getByRole('button', { name: /Cybersecurity Intern/ })
-    expect(active).toHaveAttribute('aria-expanded', 'true')
-    expect(intern).toHaveAttribute('aria-expanded', 'false')
-
-    await user.click(intern)
-    expect(intern).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('region', { name: /Cybersecurity Intern/ })).not.toHaveAttribute(
-      'inert',
-    )
+    expect(folder(/SOC L1 Analyst/)).toHaveAttribute('aria-expanded', 'true')
+    expect(folder(/Cybersecurity Intern/)).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('heading', { level: 3, name: 'SOC L1 Analyst' })).toBeInTheDocument()
   })
 
-  it('expands and collapses everything', async () => {
+  it('switches the sheet to another folder, and closes it when the open folder is clicked', async () => {
     const user = userEvent.setup()
     render(<CaseFilesSection />)
 
-    await user.click(screen.getByRole('button', { name: 'Expand all' }))
-    for (const file of cases) {
-      expect(screen.getByRole('button', { name: new RegExp(file.title) })).toHaveAttribute(
-        'aria-expanded',
-        'true',
-      )
-    }
-    await user.click(screen.getByRole('button', { name: 'Collapse all' }))
-    expect(screen.getByRole('button', { name: /SOC L1 Analyst/ })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
+    await user.click(folder(/Cybersecurity Intern/))
+    expect(folder(/Cybersecurity Intern/)).toHaveAttribute('aria-expanded', 'true')
+    expect(folder(/SOC L1 Analyst/)).toHaveAttribute('aria-expanded', 'false')
+    expect(
+      await screen.findByRole('heading', { level: 3, name: 'Cybersecurity Intern' }),
+    ).toBeInTheDocument()
+
+    await user.click(folder(/Cybersecurity Intern/))
+    expect(await screen.findByText(/No case open/)).toBeInTheDocument()
+  })
+
+  it('gives every case a folder (long titles use their short label) and links the notes', () => {
+    render(<CaseFilesSection />)
+    for (const file of cases)
+      expect(folder(new RegExp(file.shortTitle ?? file.title))).toBeVisible()
+    expect(screen.getByRole('link', { name: /Field notes/ })).toHaveAttribute('href', '/notes')
   })
 })
 
