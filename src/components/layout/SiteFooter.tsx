@@ -4,10 +4,8 @@ import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
-import { StatusDot } from '@/components/ui/StatusDot'
-import { SignalFieldLoader } from '@/features/signal-field/SignalFieldLoader'
+import { TrafficCrowdLoader } from '@/features/crowd/TrafficCrowdLoader'
 import { cn } from '@/lib/cn'
-import { formatMonth } from '@/lib/dates'
 import { copyToClipboard, getEmail, openMailto } from '@/lib/email'
 import { goToSection, scrollToTop } from '@/lib/scroll'
 
@@ -19,7 +17,7 @@ function FooterHeading({ children }: { children: string }) {
 
 /**
  * The footer is the last scene: an index and contact band, a big sign-off, then the "traffic"
- * signal field (the name as a live dot matrix) and a status strip. As it scrolls into view its contents rise
+ * street scene: a hand-drawn city with people walking past, behind a giant watermark. As it scrolls into view its contents rise
  * from behind the page's edge, as if the page were lifting off them (CSS scroll timeline).
  */
 export function SiteFooter() {
@@ -135,27 +133,25 @@ export function SiteFooter() {
           </div>
         </Container>
 
-        {/* The signal field: the name as a live dot matrix, with traffic streaming through it. */}
-        <Container>
-          <div className="relative h-[clamp(8.5rem,26vw,24rem)] border-y border-line">
-            <SignalFieldLoader />
-          </div>
-        </Container>
-
-        {/* Status strip: the one place the green "live" light belongs in the footer. */}
-        <Container
-          data-version={__APP_VERSION__}
-          data-build={__BUILD_SHA__}
-          className="grid gap-x-6 gap-y-2 py-5 pb-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] label text-fg-subtle md:grid-cols-3 md:items-center md:pb-[max(1.25rem,env(safe-area-inset-bottom))]"
-        >
-          <p className="flex items-center gap-2">
-            <StatusDot pulse />
-            All systems normal
+        {/*
+          The street: a hand-drawn city on sketchbook paper (in both themes), the giant name
+          behind it, and people walking past. Code and drawings load only near the footer.
+        */}
+        <div className="relative h-[clamp(17rem,42vw,30rem)] overflow-hidden bg-[#fbfbf9]">
+          <p
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-[3%] text-center font-display text-[clamp(4.5rem,20vw,19rem)] leading-[0.8] font-extrabold tracking-[-0.04em] text-[#e9e9e5] uppercase font-stretch-[80%] select-none"
+          >
+            {firstName}.
           </p>
-          <p className="md:text-center">Finally, some traffic on my site.</p>
-          <p className="md:text-right">
-            © {__BUILD_DATE__.slice(0, 4)} {site.name} · build {__BUILD_SHA__} ·{' '}
-            <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
+          <TrafficCrowdLoader />
+        </div>
+
+        {/* Closing line. Phones keep room at the bottom for the floating Ask pill. */}
+        <Container className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-5 pb-[max(5rem,calc(env(safe-area-inset-bottom)+4.5rem))] label text-fg-subtle md:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <p>Finally, some traffic on my site.</p>
+          <p>
+            © {__BUILD_DATE__.slice(0, 4)} {site.name}
           </p>
         </Container>
       </div>

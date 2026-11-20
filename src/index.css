@@ -424,6 +424,45 @@
   }
 }
 
+/* Footer street: lanes slide across the band, figures bob as they step, birds flap, boxes pop in. */
+@keyframes crowd-walk {
+  from {
+    transform: translateX(var(--walk-from, -25%));
+  }
+  to {
+    transform: translateX(102%);
+  }
+}
+
+@keyframes crowd-step {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2.5%);
+  }
+}
+
+@keyframes bird-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.6);
+  }
+}
+
+@keyframes detect-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ------------------------------------------------------------------------------------------------
  * Code highlighting
  * Shiki emits `var(--shiki-*)` at build time (css-variables theme); the palette lives here so code

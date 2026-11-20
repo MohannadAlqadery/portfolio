@@ -1,9 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 
-const SignalField = lazy(() => import('./SignalField'))
+const TrafficCrowd = lazy(() => import('./TrafficCrowd'))
 
-/** Downloads and starts the field only when the footer is near; until then it's empty space. */
-export function SignalFieldLoader() {
+/**
+ * Downloads and starts the crowd only when the footer is near the viewport; until then (and on
+ * pre-rendered pages) the band is just its background, so nothing shifts when people arrive.
+ */
+export function TrafficCrowdLoader() {
   const ref = useRef<HTMLDivElement>(null)
   const [near, setNear] = useState(false)
 
@@ -27,7 +30,7 @@ export function SignalFieldLoader() {
     <div ref={ref} className="absolute inset-0">
       {near ? (
         <Suspense fallback={null}>
-          <SignalField />
+          <TrafficCrowd />
         </Suspense>
       ) : null}
     </div>
