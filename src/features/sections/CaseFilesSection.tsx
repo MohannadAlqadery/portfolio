@@ -5,6 +5,7 @@ import { cases } from '@/content/cases'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/cn'
 import { formatMonth, toYearMonth } from '@/lib/dates'
+import { preloadRoute } from '@/lib/route-modules'
 import { navigate } from '@/lib/router'
 import { getSmoothScroll } from '@/lib/smooth-scroll'
 import { CaseSheet } from './case-files/CaseSheet'
@@ -84,7 +85,7 @@ export function CaseFilesSection() {
                 />
               </button>
               <FolderCaption>
-                <span className="truncate">
+                <span className="min-w-0">
                   {file.org.replace(/ LLC$/, '')} · {file.classification}
                 </span>
                 <span className={cn('shrink-0', file.status === 'active' && 'text-fg')}>
@@ -95,7 +96,13 @@ export function CaseFilesSection() {
           )
         })}
         <li>
-          <a href="/notes" onClick={openNotes} className={folderClass}>
+          <a
+            href="/notes"
+            onClick={openNotes}
+            onPointerEnter={() => void preloadRoute('/notes')}
+            onFocus={() => void preloadRoute('/notes')}
+            className={folderClass}
+          >
             <FolderShell
               title="Field notes"
               icon="link"

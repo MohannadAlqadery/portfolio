@@ -116,7 +116,7 @@ export function FolderShell({ title, papers, open = false, icon }: FolderShellPr
 /** Caption row under a folder. */
 export function FolderCaption({ children }: { children: ReactNode }) {
   return (
-    <span className="mt-3 flex items-baseline justify-between gap-3 label text-fg-subtle">
+    <span className="mt-3 flex items-start justify-between gap-3 label leading-snug text-fg-subtle">
       {children}
     </span>
   )
