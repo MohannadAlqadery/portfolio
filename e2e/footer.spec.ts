@@ -9,7 +9,7 @@ const toBottom = (page: Page) =>
 
 /** A cheap fingerprint of what the canvas shows: average colour of a sampled grid. */
 const sample = (page: Page) =>
-  page.locator('[data-neon-district] canvas').evaluate((canvas: HTMLCanvasElement) => {
+  page.locator('[data-city-watch] canvas').evaluate((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -26,9 +26,9 @@ const sample = (page: Page) =>
     return { r: r / n, g: g / n, b: b / n, width: canvas.width, css: canvas.clientWidth }
   })
 
-test.describe('neon district footer', () => {
+test.describe('city watch footer', () => {
   test('loads only near the footer, then runs', async ({ page, consoleErrors }) => {
-    const chunk = (url: string) => /NeonDistrict-[\w-]+\.js$/.test(url)
+    const chunk = (url: string) => /CityWatch-[\w-]+\.js$/.test(url)
     const requested: string[] = []
     page.on('request', (r) => requested.push(r.url()))
     await page.emulateMedia({ reducedMotion: 'no-preference' })
@@ -38,7 +38,7 @@ test.describe('neon district footer', () => {
     expect(requested.some(chunk)).toBe(false)
 
     await toBottom(page)
-    const street = page.locator('[data-neon-district]')
+    const street = page.locator('[data-city-watch]')
     await expect(street).toHaveAttribute('data-paused', 'false')
     await expect(street).toHaveAttribute('data-scene', 'night')
 
@@ -47,9 +47,9 @@ test.describe('neon district footer', () => {
     const dpr = await page.evaluate(() => Math.min(window.devicePixelRatio || 1, 2))
     expect(shot?.width).toBe(Math.round((shot?.css ?? 0) * dpr))
 
-    // Scan brackets lock onto passers-by by themselves.
+    // The profiler checks passers-by's devices by itself.
     await expect
-      .poll(async () => Number(await street.getAttribute('data-scans')), { timeout: 6000 })
+      .poll(async () => Number(await street.getAttribute('data-profiles')), { timeout: 6000 })
       .toBeGreaterThan(0)
     expect(consoleErrors).toEqual([])
   })
@@ -57,7 +57,7 @@ test.describe('neon district footer', () => {
   test('is night in the dark theme and day in the light one', async ({ page }) => {
     await page.goto('/')
     await toBottom(page)
-    const street = page.locator('[data-neon-district]')
+    const street = page.locator('[data-city-watch]')
     await expect(street).toHaveAttribute('data-scene', 'night')
     const night = await sample(page)
 
@@ -68,10 +68,37 @@ test.describe('neon district footer', () => {
     expect(brightness(day)).toBeGreaterThan(brightness(night) + 80)
   })
 
+  test("its sky is the page's own background, in both themes", async ({ page }) => {
+    await page.goto('/')
+    await toBottom(page)
+    const street = page.locator('[data-city-watch]')
+    // Average of the top row's right half (the HUD sits top left): the page canvas colour.
+    const skyMatchesPage = () =>
+      street.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return 999
+        const { data } = ctx.getImageData(canvas.width / 2, 1, canvas.width / 2, 1)
+        let sum = 0
+        for (let i = 0; i < data.length; i += 4) sum += data[i] ?? 0
+        const avg = sum / (data.length / 4)
+        const probe = document.createElement('div')
+        probe.style.color = 'var(--color-canvas)'
+        document.body.append(probe)
+        const canvasTone = Number(/\d+/.exec(getComputedStyle(probe).color)?.[0] ?? 0)
+        probe.remove()
+        return Math.abs(avg - canvasTone)
+      })
+    await expect(street).toHaveAttribute('data-scene', 'night')
+    expect(await skyMatchesPage()).toBeLessThan(10)
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'))
+    await expect(street).toHaveAttribute('data-scene', 'day')
+    expect(await skyMatchesPage()).toBeLessThan(10)
+  })
+
   test('stands still with Reduce Motion', async ({ page }) => {
     await page.goto('/')
     await toBottom(page)
-    const street = page.locator('[data-neon-district]')
+    const street = page.locator('[data-city-watch]')
     await expect(street).toHaveAttribute('data-scene', 'night')
     await expect(street).toHaveAttribute('data-paused', 'true')
     const a = await sample(page)
@@ -82,7 +109,7 @@ test.describe('neon district footer', () => {
   test('takes no pointer input', async ({ page }) => {
     await page.goto('/')
     await toBottom(page)
-    const street = page.locator('[data-neon-district]')
+    const street = page.locator('[data-city-watch]')
     await expect(street).toHaveCSS('pointer-events', 'none')
   })
 
@@ -106,7 +133,7 @@ test.describe('neon district footer', () => {
   test('footer passes an accessibility audit', async ({ page }) => {
     await page.goto('/')
     await toBottom(page)
-    await expect(page.locator('[data-neon-district]')).toBeAttached()
+    await expect(page.locator('[data-city-watch]')).toBeAttached()
     const results = await new AxeBuilder({ page }).include('footer').withTags(WCAG_TAGS).analyze()
     expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([])
   })

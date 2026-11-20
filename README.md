@@ -17,11 +17,12 @@ v2), information architecture and delivery phases.
 - **Sections:** profile (word-by-word scroll reveal), case files as document folders,
   credentials, toolkit as staggered chip columns, a signal-trace timeline, and contact with a
   `mailto:` draft form.
-- **Footer:** a neon district. A rainy future street at night under a `MOHANNAD.` hologram, with
-  an elevated train, flying cars, flickering shop signs reflected in the wet road, and people
-  walking past. Scan brackets lock onto passers-by by themselves; nothing reacts to the pointer.
-  The light theme shows the same street by day (signs off, no rain). It is all drawn in code on
-  one canvas (`src/features/neon-district`), with no images.
+- **Footer:** City watch: a night city seen from a SOC, in the page's own colour tokens (its sky
+  is the page background). Buildings are hosts that get patched in waves, new CVEs ping in, an
+  advisory ticker scrolls, packets run along rooftop cables and malicious ones are dropped at a
+  firewall, and a profiler checks passers-by's devices for missing updates and anomalies, then
+  marks them resolved. Colour appears only as severity. The light theme shows the same city by
+  day. Drawn in code on one canvas (`src/features/city-watch`); nothing reacts to the pointer.
 - **Ask terminal:** a scripted assistant (corner pill, or the backtick key) that answers from the
   site's own content. No AI and no network.
 - **Field notes** at `/notes`: MDX write-ups, pre-rendered as static HTML.

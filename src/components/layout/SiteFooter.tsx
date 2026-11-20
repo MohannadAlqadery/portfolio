@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
-import { NeonDistrictLoader } from '@/features/neon-district/NeonDistrictLoader'
+import { CityWatchLoader } from '@/features/city-watch/CityWatchLoader'
 import { cn } from '@/lib/cn'
 import { copyToClipboard, getEmail, openMailto } from '@/lib/email'
 import { goToSection, scrollToTop } from '@/lib/scroll'
@@ -17,9 +17,9 @@ function FooterHeading({ children }: { children: string }) {
 
 /**
  * The footer is the last scene: an index and contact band, a big sign-off, then the "traffic"
- * street: a neon district at night (by day in the light theme) with people walking past under
- * a hologram of the name. As it scrolls into view its contents rise from behind the page's edge,
- * as if the page were lifting off them (CSS scroll timeline).
+ * street: a city watched from a SOC (patches, CVEs, packets, a profiler on passers-by), at night in
+ * the dark theme and by day in the light one. As it scrolls into view its contents rise from
+ * behind the page's edge, as if the page were lifting off them (CSS scroll timeline).
  */
 export function SiteFooter() {
   const [copied, setCopied] = useState(false)
@@ -135,11 +135,12 @@ export function SiteFooter() {
         </Container>
 
         {/*
-          The street: a canvas drawn in code (no images), night in the dark theme and day in the
-          light one. The band's own colour matches the sky, so it looks right before it loads.
+          The street: a canvas drawn in code (no images) in the page's own colour tokens. Its sky
+          is the page background, so the city rises out of the page, and the band looks right
+          before it loads.
         */}
-        <div className="relative h-[clamp(18rem,44vw,32rem)] overflow-hidden bg-[#0d0a18] [:root[data-theme=light]_&]:bg-[#dde2e8]">
-          <NeonDistrictLoader />
+        <div className="relative h-[clamp(18rem,44vw,32rem)] overflow-hidden bg-canvas">
+          <CityWatchLoader />
         </div>
 
         {/* Closing line. Phones keep room at the bottom for the floating Ask pill. */}
