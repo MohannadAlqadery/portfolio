@@ -335,7 +335,7 @@ export default function NightShiftCity() {
             aria-hidden="true"
             className="size-1.5 animate-pulse-dot rounded-full bg-signal text-signal"
           />
-          Night shift · Abu Dhabi · {hosts} hosts
+          Night shift · {hosts} hosts
         </p>
         <div className="flex items-center gap-3">
           <p>
@@ -377,9 +377,9 @@ export default function NightShiftCity() {
         </div>
       </div>
       <p id={descriptionId} className="sr-only">
-        An Abu Dhabi-style skyline at night along the Corniche, drawn as a network where every
-        building is a host. Alerts and multi-host incidents come in during the shift; Triage alert
-        opens the most urgent one and walks through how it was investigated.
+        A city skyline at night along the water, drawn as a network where every building is a host.
+        Alerts and multi-host incidents come in during the shift; Triage alert opens the most urgent
+        one and walks through how it was investigated.
       </p>
 
       <canvas

@@ -18,7 +18,7 @@ test.describe('night-shift city footer', () => {
     const city = page.getByTestId('night-city')
     await expect(city).toBeVisible()
     expect((await city.boundingBox())?.height ?? 0).toBeGreaterThan(150)
-    await expect(page.getByText(/Night shift · Abu Dhabi · \d+ hosts/)).toBeVisible()
+    await expect(page.getByText(/Night shift · \d+ hosts/)).toBeVisible()
 
     // An alert comes in; triage it from the keyboard-accessible button.
     const triage = page.getByRole('button', { name: /Triage alert/ })
@@ -74,14 +74,13 @@ test.describe('night-shift city footer', () => {
     await expect(card).toBeHidden()
   })
 
-  test('says where it is, and keeps several cases open at once', async ({ page }) => {
+  test('keeps location out of the footer, and several cases open at once', async ({ page }) => {
     await page.goto('/')
     const footer = page.locator('footer')
     await footer.scrollIntoViewIfNeeded()
-    await expect(footer.getByText('Based in Abu Dhabi, UAE')).toBeVisible()
-    await expect(footer.getByText(/Night shift · Abu Dhabi · \d+ hosts/)).toBeVisible()
-    // The Base block is gone.
-    await expect(footer.getByText('Coordinates')).toHaveCount(0)
+    await expect(footer.getByText(/^Night shift · \d+ hosts$/)).toBeVisible()
+    // No location, coordinates or Base block in the footer.
+    await expect(footer.getByText(/Abu Dhabi|Coordinates|24\.45/)).toHaveCount(0)
 
     // Alerts and incidents keep arriving while nobody triages: the queue grows past one.
     const triage = page.getByRole('button', { name: /Triage alert/ })

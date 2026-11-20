@@ -18,6 +18,18 @@ type MobileMenuProps = {
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
+/** Links slide up into place one after another when opening; all leave together when closing. */
+const stagger = (open: boolean, i: number) => ({
+  transitionDelay: open ? `${60 + i * 35}ms` : '0ms',
+})
+const itemClass = (open: boolean) =>
+  cn(
+    'transition-[opacity,translate] motion-reduce:transition-none',
+    open
+      ? 'translate-y-0 opacity-100 duration-500 ease-[var(--ease-out-expo)]'
+      : 'translate-y-3 opacity-0 duration-150 ease-[var(--ease-in-quick)]',
+  )
+
 /** Full-height section index for small screens. Hidden from `xl` up, where the inline nav shows. */
 export function MobileMenu({
   id,
@@ -61,17 +73,24 @@ export function MobileMenu({
   return (
     <div
       id={id}
-      hidden={!open}
+      // Closed: invisible and inert (out of the tab order and the accessibility tree), but still
+      // mounted, so it can animate both ways.
+      inert={!open}
       // Full-screen sheet from the very top edge, so nothing of the page shows behind the status
       // bar, the Island or Safari's toolbar. The header (z-40) stays on top with the close button;
       // the top padding (header height + status bar) starts the list just below it.
-      className="fixed inset-0 z-30 overflow-y-auto overscroll-contain bg-canvas pt-[calc(3.5rem+1px+env(safe-area-inset-top))] xl:hidden"
+      className={cn(
+        'fixed inset-0 z-30 overflow-y-auto overscroll-contain bg-canvas pt-[calc(3.5rem+1px+env(safe-area-inset-top))] transition-[opacity,visibility] motion-reduce:transition-none xl:hidden',
+        open
+          ? 'visible opacity-100 duration-300 ease-[var(--ease-out-expo)]'
+          : 'invisible opacity-0 duration-200 ease-[var(--ease-in-quick)]',
+      )}
     >
       <Container className="flex min-h-full flex-col justify-between pt-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
         <nav aria-label="Sections">
           <ul className="divide-y divide-line border-y border-line">
             {sections.map((section, i) => (
-              <li key={section.id}>
+              <li key={section.id} style={stagger(open, i)} className={itemClass(open)}>
                 <a
                   ref={i === 0 ? firstLinkRef : undefined}
                   href={`/#${section.id}`}
@@ -91,7 +110,7 @@ export function MobileMenu({
                 </a>
               </li>
             ))}
-            <li>
+            <li style={stagger(open, sections.length)} className={itemClass(open)}>
               <a
                 href="/notes"
                 onClick={onNotes}
@@ -109,7 +128,10 @@ export function MobileMenu({
           </ul>
         </nav>
 
-        <div className="mt-10 flex items-end justify-between gap-4">
+        <div
+          style={stagger(open, sections.length + 1)}
+          className={cn('mt-10 flex items-end justify-between gap-4', itemClass(open))}
+        >
           <LocalClock />
           <a
             href={site.links.linkedin}

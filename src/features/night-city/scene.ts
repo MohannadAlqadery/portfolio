@@ -187,7 +187,7 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
     active = city.buildings.map((b) => b.windows.map(() => Math.random() < 0.08))
     hover = new Float32Array(city.buildings.length)
     const waterTop = groundY() + 4
-    const waterBottom = height - cell.h * 1.1 // keep the caption row clear
+    const waterBottom = height - 3
     ripples = Array.from({ length: Math.round(city.cols * 0.55) }, () => ({
       x: Math.random() * (width + 40),
       y: waterTop + Math.random() * Math.max(waterBottom - waterTop, 4),
@@ -267,9 +267,8 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
     ctx.fillStyle = colors.lineStrong
     ctx.fillRect(0, y0, width, 1)
 
-    // Reflections: each lit window becomes a short, wobbling streak of light.
-    // Reflections stay above the caption row along the bottom.
-    const streak = Math.max((bottom - cell.h - y0 - 6) / 3 - 2, 2)
+    // Reflections: each lit window becomes a short, wobbling streak of light, fading downward.
+    const streak = Math.max((bottom - y0 - 8) / 3 - 2, 2)
     city.buildings.forEach((b, i) => {
       const alerting = alertBy.get(i)
       b.windows.forEach((win, wi) => {
@@ -302,14 +301,6 @@ export function createScene(canvas: HTMLCanvasElement, options: SceneOptions): S
       ctx.globalAlpha = (0.1 + 0.16 * (0.5 + 0.5 * Math.sin(t * 0.9 + r.phase))) * reveal
       ctx.fillRect(x, r.y, r.len, 1)
     }
-
-    // Where we are, along the waterline.
-    ctx.fillStyle = colors.subtle
-    ctx.globalAlpha = 0.8 * reveal
-    const captionY = height - cell.h + 1
-    ctx.fillText('24.45°N 54.37°E', px(1), captionY)
-    const place = 'ABU DHABI · CORNICHE'
-    ctx.fillText(place, px(city.cols - 1) - ctx.measureText(place).width, captionY)
     ctx.globalAlpha = 1
   }
 

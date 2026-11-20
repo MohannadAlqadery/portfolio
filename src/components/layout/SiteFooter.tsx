@@ -65,13 +65,6 @@ export function SiteFooter() {
               <em className="text-fg-muted">{rest.join(' ')}</em>
             </p>
             <p className="mt-5 label text-fg-subtle">{site.role} · REACH Digital</p>
-            <p className="mt-2 flex items-center gap-2 label text-fg-subtle">
-              <span
-                aria-hidden="true"
-                className="size-1.5 animate-pulse-dot rounded-full bg-signal text-signal"
-              />
-              Based in {site.location.city}, {site.location.country}
-            </p>
           </div>
 
           <nav aria-label="Footer" className="md:col-span-3">

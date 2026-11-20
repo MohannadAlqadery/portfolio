@@ -178,11 +178,21 @@ export function SiteHeader() {
               className="grid size-8 place-items-center rounded-sm border border-line text-fg-muted transition-colors hover:border-line-strong hover:text-fg xl:hidden"
             >
               <span className="sr-only">{menuOpen ? 'Close menu' : 'Open menu'}</span>
-              {menuOpen ? (
-                <X aria-hidden="true" className="size-4" />
-              ) : (
-                <Menu aria-hidden="true" className="size-4" />
-              )}
+              {/* The two icons cross-fade and turn into each other. */}
+              <span aria-hidden="true" className="relative size-4">
+                <Menu
+                  className={cn(
+                    'absolute inset-0 size-4 transition-[opacity,rotate,scale] duration-300 ease-[var(--ease-out-expo)] motion-reduce:transition-none',
+                    menuOpen ? 'scale-75 rotate-90 opacity-0' : 'opacity-100',
+                  )}
+                />
+                <X
+                  className={cn(
+                    'absolute inset-0 size-4 transition-[opacity,rotate,scale] duration-300 ease-[var(--ease-out-expo)] motion-reduce:transition-none',
+                    menuOpen ? 'opacity-100' : 'scale-75 -rotate-90 opacity-0',
+                  )}
+                />
+              </span>
             </button>
           </div>
         </Container>
