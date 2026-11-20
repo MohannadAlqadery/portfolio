@@ -8,17 +8,21 @@ type SectionHeaderProps = {
   total: number
   /** Short mono label shown next to the index, e.g. "Case files". */
   kicker: string
-  /** Editorial headline. */
+  /** Big display title. Wrap a word in <em> to set it in the muted second tone. */
   title: ReactNode
   /** Id for the heading so the section can use `aria-labelledby`. */
   headingId?: string
-  /** Optional supporting content aligned with the headline. */
+  /** Short caption set against the title on the right (wraps below it on phones). */
   children?: ReactNode
   className?: string
 }
 
 const pad = (n: number) => n.toString().padStart(2, '0')
 
+/**
+ * v2 section header: index label, a large two-tone display title on the left and a short
+ * caption on the right, like a magazine spread.
+ */
 export function SectionHeader({
   index,
   total,
@@ -31,23 +35,28 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        'grid reveal gap-4 border-t border-line pt-5 md:grid-cols-12 md:gap-8',
+        'grid reveal gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] md:items-end md:gap-12',
         className,
       )}
     >
-      <p className="label text-fg-subtle md:col-span-3">
-        <span className="text-signal">{pad(index)}</span>
-        <span aria-hidden="true"> / {pad(total)}</span>
-        <span className="sr-only"> of {total}</span>
-        <span aria-hidden="true"> · </span>
-        {kicker}
-      </p>
-      <div className="md:col-span-9">
-        <h2 id={headingId} className="font-display text-headline text-balance text-fg">
+      <div>
+        <p className="label text-fg-subtle">
+          <span className="text-signal">{pad(index)}</span>
+          <span aria-hidden="true"> / {pad(total)}</span>
+          <span className="sr-only"> of {total}</span>
+          <span aria-hidden="true"> · </span>
+          {kicker}
+        </p>
+        <h2
+          id={headingId}
+          className="mt-4 font-display text-[clamp(2.75rem,7vw,5.5rem)] leading-[0.92] font-bold tracking-[-0.035em] text-balance text-fg [&_em]:text-fg-subtle [&_em]:not-italic"
+        >
           {title}
         </h2>
-        {children ? <div className="mt-4 max-w-2xl text-fg-muted">{children}</div> : null}
       </div>
+      {children ? (
+        <div className="text-sm leading-relaxed text-pretty text-fg-muted md:pb-2">{children}</div>
+      ) : null}
     </div>
   )
 }
