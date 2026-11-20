@@ -1,48 +1,33 @@
-import { ArrowUp, Check, Mail } from 'lucide-react'
-import { useState, type MouseEvent, type ReactNode } from 'react'
-import { LinkedinIcon } from '@/components/icons/BrandIcons'
+import { ArrowUp, ArrowUpRight, Check, Copy } from 'lucide-react'
+import { useState, type MouseEvent } from 'react'
 import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
-import { NightShiftCityLoader } from '@/features/night-city/NightShiftCityLoader'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
+import { TrafficCrowdLoader } from '@/features/crowd/TrafficCrowdLoader'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
-import { copyToClipboard, getEmail } from '@/lib/email'
+import { copyToClipboard, getEmail, openMailto } from '@/lib/email'
 import { goToSection, scrollToTop } from '@/lib/scroll'
 
-const pad = (n: number) => n.toString().padStart(2, '0')
+const linkClass = 'py-1 text-sm text-fg-muted transition-colors hover:text-fg'
 
 function FooterHeading({ children }: { children: string }) {
-  return <h2 className="mb-4 label text-fg-subtle">{children}</h2>
+  return <h2 className="mb-3 label text-fg-subtle">{children}</h2>
 }
 
-const linkClass =
-  'group inline-flex items-center gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg'
-
-/** Fixed-width icon slot so every "Elsewhere" label lines up. */
-function IconSlot({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        'grid size-7 shrink-0 place-items-center rounded-sm border border-line text-fg-subtle transition-colors group-hover:border-line-strong group-hover:text-fg [&_svg]:size-3.5',
-        className,
-      )}
-    >
-      {children}
-    </span>
-  )
-}
-
+/**
+ * The footer is the last scene: an index and contact band, a big sign-off, then the "traffic"
+ * band with a crowd walking past a giant watermark. As it scrolls into view its contents rise
+ * from behind the page's edge, as if the page were lifting off them (CSS scroll timeline).
+ */
 export function SiteFooter() {
   const [copied, setCopied] = useState(false)
-  const [firstName, ...rest] = site.name.split(' ')
+  const firstName = site.name.split(' ')[0] ?? site.name
 
   const onCopyEmail = async () => {
-    const ok = await copyToClipboard(getEmail())
-    if (!ok) {
-      window.location.assign(`mailto:${getEmail()}`)
+    if (!(await copyToClipboard(getEmail()))) {
+      openMailto(`mailto:${getEmail()}`)
       return
     }
     setCopied(true)
@@ -55,112 +40,127 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="border-t border-line">
-      <Container className="pt-14 pb-[max(3.5rem,calc(env(safe-area-inset-bottom)+2rem))] md:pt-20 md:pb-20">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-12 md:gap-8">
-          <div className="col-span-2 md:col-span-6">
-            <p className="font-display text-5xl leading-[0.95] text-fg md:text-headline">
-              {firstName}
-              <br />
-              <em className="text-fg-muted">{rest.join(' ')}</em>
-            </p>
-            <p className="mt-5 label text-fg-subtle">{site.role} · REACH Digital</p>
-          </div>
+    // The top 4rem (inside the padding) fades out, so contents rising past the edge dissolve
+    // instead of being sliced.
+    <footer className="overflow-hidden bg-canvas [mask-image:linear-gradient(to_bottom,transparent,black_4rem)] [view-timeline-name:--footer]">
+      <div className="footer-reveal">
+        <Container className="pt-20">
+          <div className="grid gap-x-8 gap-y-8 md:grid-cols-12 md:gap-y-10">
+            <div className="md:col-span-4">
+              <p className="font-display text-2xl font-bold tracking-tight text-fg">
+                {firstName}
+                <span className="text-fg-subtle">.</span>
+              </p>
+              <p className="mt-2 text-sm text-fg-muted">
+                SOC analyst
+                <br />
+                on the blue team.
+              </p>
+            </div>
 
-          <nav aria-label="Footer" className="md:col-span-3">
-            <FooterHeading>Index</FooterHeading>
-            <ul className="space-y-1">
-              {sections.map((section, i) => (
-                <li key={section.id}>
-                  <a
-                    href={`/#${section.id}`}
-                    onClick={(e) => onSectionClick(e, section.id)}
-                    className="inline-flex items-baseline gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg"
+            <nav aria-label="Footer" className="md:col-span-5">
+              <FooterHeading>Explore</FooterHeading>
+              <ul className="flex flex-wrap gap-x-5 gap-y-1">
+                {sections.map((section) => (
+                  <li key={section.id}>
+                    <a
+                      href={`/#${section.id}`}
+                      onClick={(e) => onSectionClick(e, section.id)}
+                      className={linkClass}
+                    >
+                      {section.label}
+                    </a>
+                  </li>
+                ))}
+                <li>
+                  <Link to="/notes" className={linkClass}>
+                    Field notes
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+
+            <div className="md:col-span-3">
+              <FooterHeading>Get in touch</FooterHeading>
+              <ul className="space-y-1">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => void onCopyEmail()}
+                    className={cn(
+                      linkClass,
+                      'inline-flex items-center gap-2',
+                      copied && 'text-signal',
+                    )}
                   >
-                    <span className="font-mono text-[0.625rem] text-fg-subtle">{pad(i + 1)}</span>
-                    {section.label}
+                    {copied ? 'Copied' : 'Copy email'}
+                    {copied ? (
+                      <Check aria-hidden="true" className="size-3.5" />
+                    ) : (
+                      <Copy aria-hidden="true" className="size-3.5" />
+                    )}
+                  </button>
+                  <output aria-live="polite" className="sr-only">
+                    {copied ? 'Email address copied to clipboard' : ''}
+                  </output>
+                </li>
+                <li>
+                  <a
+                    href={site.links.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(linkClass, 'inline-flex items-center gap-1.5')}
+                  >
+                    LinkedIn
+                    <ArrowUpRight aria-hidden="true" className="size-3.5" />
+                    <span className="sr-only"> (opens in a new tab)</span>
                   </a>
                 </li>
-              ))}
-              <li>
-                <Link
-                  to="/notes"
-                  className="inline-flex items-baseline gap-2.5 py-1 text-sm text-fg-muted transition-colors hover:text-fg"
-                >
-                  <span className="font-mono text-[0.625rem] text-fg-subtle">✎</span>
-                  Field notes
-                </Link>
-              </li>
-            </ul>
-          </nav>
-
-          <div className="md:col-span-3">
-            <FooterHeading>Elsewhere</FooterHeading>
-            <ul className="space-y-1.5">
-              <li>
-                <a
-                  href={site.links.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={linkClass}
-                >
-                  <IconSlot>
-                    <LinkedinIcon />
-                  </IconSlot>
-                  LinkedIn
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </a>
-              </li>
-              <li>
-                <button type="button" onClick={() => void onCopyEmail()} className={linkClass}>
-                  <IconSlot className={cn(copied && 'border-signal/50 text-signal')}>
-                    {copied ? <Check /> : <Mail />}
-                  </IconSlot>
-                  <span className={cn(copied && 'text-signal')}>
-                    {copied ? 'Copied' : 'Copy email'}
-                  </span>
-                </button>
-                <output aria-live="polite" className="sr-only">
-                  {copied ? 'Email address copied to clipboard' : ''}
-                </output>
-              </li>
-            </ul>
+              </ul>
+            </div>
           </div>
+
+          <div className="mt-10 flex items-end justify-between gap-6 pb-8 md:mt-20">
+            <p className="font-display text-[clamp(2.25rem,6vw,4.5rem)] leading-none font-bold tracking-[-0.03em] text-fg">
+              See you around.
+            </p>
+            <button
+              type="button"
+              onClick={scrollToTop}
+              className="group mb-1 inline-flex shrink-0 items-center gap-2 label text-fg-subtle transition-colors hover:text-fg"
+            >
+              Back to top
+              <ArrowUp
+                aria-hidden="true"
+                className="size-3.5 transition-transform group-hover:-translate-y-0.5"
+              />
+            </button>
+          </div>
+        </Container>
+
+        {/* The traffic band: always white, like a page from a sketchbook, in both themes. */}
+        <div className="relative h-[15rem] overflow-hidden bg-[#fbfbf9] sm:h-[20rem] md:h-[24rem]">
+          <p
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 top-[2%] text-center font-display text-[clamp(5rem,21vw,20rem)] leading-[0.8] font-extrabold tracking-[-0.04em] text-[#e7e7e3] uppercase font-stretch-[80%] select-none"
+          >
+            {firstName}.
+          </p>
+          <TrafficCrowdLoader />
         </div>
 
-        {/* The night-shift city: its buildings stand on the line above the bottom bar. */}
-        <NightShiftCityLoader className="mt-16 h-[19rem] md:mt-20 md:h-[23rem]" />
-
-        {/*
-          Phone: [© · back to top] / updated. Desktop: © | updated | back to top.
-          Version and build SHA stay out of sight but are inspectable on the element.
-        */}
-        <div
+        <Container
           data-version={__APP_VERSION__}
           data-build={__BUILD_SHA__}
-          className="grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 border-t border-line pt-6 label text-fg-subtle md:grid-cols-3"
+          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] label text-fg-subtle"
         >
-          <p className="md:order-1">
-            © {__BUILD_DATE__.slice(0, 4)} {site.name}
+          <p>Finally, some traffic on my site.</p>
+          <p>
+            © {__BUILD_DATE__.slice(0, 4)} {site.name} · Updated{' '}
+            <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
           </p>
-          <button
-            type="button"
-            onClick={scrollToTop}
-            className="group inline-flex items-center gap-2 justify-self-end transition-colors hover:text-fg md:order-3"
-          >
-            Back to top
-            <span
-              aria-hidden="true"
-              className="grid size-7 place-items-center rounded-sm border border-line transition-colors group-hover:border-line-strong"
-            >
-              <ArrowUp className="size-3.5" />
-            </span>
-          </button>
-          <p className="col-span-2 md:order-2 md:col-span-1 md:text-center">
-            Updated <time dateTime={__BUILD_DATE__}>{formatMonth(__BUILD_DATE__.slice(0, 7))}</time>
-          </p>
-        </div>
-      </Container>
+        </Container>
+      </div>
     </footer>
   )
 }
