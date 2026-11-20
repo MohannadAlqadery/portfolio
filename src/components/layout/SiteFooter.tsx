@@ -4,7 +4,7 @@ import { Container } from '@/components/ui/Container'
 import { Link } from '@/components/ui/Link'
 import { sections } from '@/content/sections'
 import { site } from '@/content/site'
-import { TrafficCrowdLoader } from '@/features/crowd/TrafficCrowdLoader'
+import { NeonDistrictLoader } from '@/features/neon-district/NeonDistrictLoader'
 import { cn } from '@/lib/cn'
 import { copyToClipboard, getEmail, openMailto } from '@/lib/email'
 import { goToSection, scrollToTop } from '@/lib/scroll'
@@ -17,8 +17,9 @@ function FooterHeading({ children }: { children: string }) {
 
 /**
  * The footer is the last scene: an index and contact band, a big sign-off, then the "traffic"
- * street scene: a hand-drawn city with people walking past, behind a giant watermark. As it scrolls into view its contents rise
- * from behind the page's edge, as if the page were lifting off them (CSS scroll timeline).
+ * street: a neon district at night (by day in the light theme) with people walking past under
+ * a hologram of the name. As it scrolls into view its contents rise from behind the page's edge,
+ * as if the page were lifting off them (CSS scroll timeline).
  */
 export function SiteFooter() {
   const [copied, setCopied] = useState(false)
@@ -134,17 +135,11 @@ export function SiteFooter() {
         </Container>
 
         {/*
-          The street: a hand-drawn city on sketchbook paper (in both themes), the giant name
-          behind it, and people walking past. Code and drawings load only near the footer.
+          The street: a canvas drawn in code (no images), night in the dark theme and day in the
+          light one. The band's own colour matches the sky, so it looks right before it loads.
         */}
-        <div className="relative h-[clamp(17rem,42vw,30rem)] overflow-hidden bg-[#fbfbf9]">
-          <p
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-[3%] text-center font-display text-[clamp(4.5rem,20vw,19rem)] leading-[0.8] font-extrabold tracking-[-0.04em] text-[#e9e9e5] uppercase font-stretch-[80%] select-none"
-          >
-            {firstName}.
-          </p>
-          <TrafficCrowdLoader />
+        <div className="relative h-[clamp(18rem,44vw,32rem)] overflow-hidden bg-[#0d0a18] [:root[data-theme=light]_&]:bg-[#dde2e8]">
+          <NeonDistrictLoader />
         </div>
 
         {/* Closing line. Phones keep room at the bottom for the floating Ask pill. */}

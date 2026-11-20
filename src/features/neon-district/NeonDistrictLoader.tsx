@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 
-const TrafficCrowd = lazy(() => import('./TrafficCrowd'))
+const NeonDistrict = lazy(() => import('./NeonDistrict'))
 
 /**
- * Downloads and starts the crowd only when the footer is near the viewport; until then (and on
- * pre-rendered pages) the band is just its background, so nothing shifts when people arrive.
+ * Downloads and starts the street only when the footer is near the viewport; until then (and on
+ * pre-rendered pages) the band is just its sky colour, so nothing shifts when the city lights up.
  */
-export function TrafficCrowdLoader() {
+export function NeonDistrictLoader() {
   const ref = useRef<HTMLDivElement>(null)
   const [near, setNear] = useState(false)
 
@@ -30,7 +30,7 @@ export function TrafficCrowdLoader() {
     <div ref={ref} className="absolute inset-0">
       {near ? (
         <Suspense fallback={null}>
-          <TrafficCrowd />
+          <NeonDistrict />
         </Suspense>
       ) : null}
     </div>

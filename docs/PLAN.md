@@ -14,14 +14,14 @@ and transitions and add a security layer on top; we copy none of its assets or c
 
 ### Decisions
 
-| Topic     | Decision                                                                                                                                                       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Direction | **Case File Noir**: dark monochrome, light/dark toggle, one accent, cyber layer through motion                                                                 |
-| Accent    | Signal green `#7BD389`, only for status / live states; severity colours stay semantic-only                                                                     |
-| Footer    | **Traffic crowd**: walking line-art crowd (CC0 Open Peeps), giant `MOHANNAD.` watermark, detection boxes lock onto people, "Finally, some traffic on my site." |
-| Assistant | **Scripted terminal** panel (no backend, no API key, no prompt-injection surface)                                                                              |
-| Portrait  | None. The hero card is an **ASCII monogram** (`MA` in glyphs), no photo of Mohannad on the site                                                                |
-| Contact   | Unchanged: obfuscated email + LinkedIn; the form only builds a `mailto:` draft                                                                                 |
+| Topic     | Decision                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Direction | **Case File Noir**: dark monochrome, light/dark toggle, one accent, cyber layer through motion                                                   |
+| Accent    | Signal green `#7BD389`, only for status / live states; severity colours stay semantic-only                                                       |
+| Footer    | **Neon district**: canvas night street, `MOHANNAD.` hologram, walking crowd, scan brackets lock onto people, "Finally, some traffic on my site." |
+| Assistant | **Scripted terminal** panel (no backend, no API key, no prompt-injection surface)                                                                |
+| Portrait  | None. The hero card is an **ASCII monogram** (`MA` in glyphs), no photo of Mohannad on the site                                                  |
+| Contact   | Unchanged: obfuscated email + LinkedIn; the form only builds a `mailto:` draft                                                                   |
 
 ### Reference → our version
 
@@ -59,10 +59,12 @@ v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided 
   as layout shift.
 - **Folders** open a case sheet in the page rather than a modal, so content stays indexable and
   no scroll lock is needed.
-- **Footer (after two reviews):** the walking crowd came back as a **street**: a generated
-  ink skyline (towers, water tank, dome and minaret, a crane) with birds, the crowd at eye level and
-  automatic detection tags. No pointer interaction and no build info. A canvas "signal field"
-  was tried in between and dropped: the owner wanted the footer to be about people and city life.
+- **Footer (after three reviews):** a **neon district**, a cyberpunk-inspired city street drawn
+  on canvas: a `MOHANNAD.` hologram, an elevated train, flying cars, neon signs (including
+  Arabic) and a walking crowd, with scan brackets that lock onto passers-by by themselves. Night in
+  the dark theme, day in the light one. No pointer interaction and no build info. Earlier tries
+  were dropped along the way: a signal field (not about people) and an Open Peeps street (a style
+  others already use).
 - **Green = Active only (after review):** the accent appears only on "Active" status; an e2e
   check scans each page for any other green.
 - **Large screens:** root size steps to 112.5 / 125 / 150% on big, tall monitors; layouts are

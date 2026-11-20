@@ -17,11 +17,11 @@ v2), information architecture and delivery phases.
 - **Sections:** profile (word-by-word scroll reveal), case files as document folders,
   credentials, toolkit as staggered chip columns, a signal-trace timeline, and contact with a
   `mailto:` draft form.
-- **Footer:** a street. A hand-drawn ink city (towers, a water tank, a dome and minaret, a crane
-  over a half-built frame) with birds over the rooftops and a crowd walking past, behind a giant
-  `MOHANNAD.` watermark. Detection tags settle on passers-by by themselves; nothing reacts to the
-  pointer. People are [Open Peeps](https://www.openpeeps.com) by Pablo Stanley (CC0), see
-  `src/features/crowd/peeps/README.md`; the skyline is generated SVG.
+- **Footer:** a neon district. A rainy future street at night under a `MOHANNAD.` hologram, with
+  an elevated train, flying cars, flickering shop signs reflected in the wet road, and people
+  walking past. Scan brackets lock onto passers-by by themselves; nothing reacts to the pointer.
+  The light theme shows the same street by day (signs off, no rain). It is all drawn in code on
+  one canvas (`src/features/neon-district`), with no images.
 - **Ask terminal:** a scripted assistant (corner pill, or the backtick key) that answers from the
   site's own content. No AI and no network.
 - **Field notes** at `/notes`: MDX write-ups, pre-rendered as static HTML.
