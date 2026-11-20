@@ -4,6 +4,8 @@ export type CaseFile = {
   status: 'active' | 'closed'
   classification: string
   title: string
+  /** Shorter title for the folder label, when the full one is long. */
+  shortTitle?: string
   org: string
   location: string
   start: string
@@ -12,6 +14,8 @@ export type CaseFile = {
   actions: string[]
   note?: string
   tags: string[]
+  /** A few mono lines printed on the folder's dark page. Decoration only (aria-hidden). */
+  excerpt: string[]
 }
 
 export const cases: CaseFile[] = [
@@ -31,6 +35,12 @@ export const cases: CaseFile[] = [
       'Document investigations and actions taken in the case management system for audit and handover.',
     ],
     tags: ['Alert triage', 'SIEM', 'EDR', 'Playbooks', 'Escalation', 'Case documentation'],
+    excerpt: [
+      'SecurityAlert',
+      '| where Severity == "High"',
+      '| summarize by Entity',
+      '| extend Verdict = "TP"',
+    ],
   },
   {
     id: 'CASE-2507',
@@ -48,12 +58,19 @@ export const cases: CaseFile[] = [
       'Practised vulnerability assessment and security testing on guided lab targets, then wrote up the findings.',
     ],
     tags: ['Log review', 'Incident response', 'Vulnerability assessment', 'Write-ups'],
+    excerpt: [
+      'lab/enterprise-net',
+      '$ grep "Failed password" auth.log',
+      '$ nmap -sV target',
+      '> findings.md',
+    ],
   },
   {
     id: 'CASE-2408',
     status: 'closed',
     classification: 'Compliance',
     title: 'Quality Assurance and Compliance Representative',
+    shortTitle: 'QA and Compliance',
     org: 'WUDUH',
     location: 'Amman, Jordan',
     start: '2024-08',
@@ -66,5 +83,11 @@ export const cases: CaseFile[] = [
     ],
     note: 'Promoted into the quality assurance role after four months in a client-facing position.',
     tags: ['Compliance', 'Sensitive data', 'Quality checks', 'Escalation'],
+    excerpt: [
+      'review: client_file',
+      'policy ........ PASS',
+      'regulation .... FLAG',
+      'escalate -> QA lead',
+    ],
   },
 ]
