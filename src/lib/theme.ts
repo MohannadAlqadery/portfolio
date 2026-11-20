@@ -36,6 +36,37 @@ export function toggleTheme(): Theme {
   return next
 }
 
+/**
+ * Toggle with a circular reveal that grows from `origin` (the toggle button), using the View
+ * Transitions API. Falls back to an instant switch without support, without an origin, or with
+ * Reduce Motion on.
+ */
+export function toggleThemeFrom(origin?: { x: number; y: number }): Theme {
+  const next: Theme = getTheme() === 'dark' ? 'light' : 'dark'
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  if (!origin || reduce || typeof document.startViewTransition !== 'function') {
+    setTheme(next)
+    return next
+  }
+
+  const root = document.documentElement
+  // Radius that reaches the farthest corner of the viewport from the origin.
+  const radius = Math.hypot(
+    Math.max(origin.x, window.innerWidth - origin.x),
+    Math.max(origin.y, window.innerHeight - origin.y),
+  )
+  root.style.setProperty('--reveal-x', `${origin.x}px`)
+  root.style.setProperty('--reveal-y', `${origin.y}px`)
+  root.style.setProperty('--reveal-r', `${Math.ceil(radius)}px`)
+  root.dataset.themeSwitch = ''
+
+  const transition = document.startViewTransition(() => setTheme(next))
+  void transition.finished.finally(() => {
+    delete root.dataset.themeSwitch
+  })
+  return next
+}
+
 /** Calls `onChange` whenever `data-theme` changes on <html>, from any source. */
 export function subscribeTheme(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange)
