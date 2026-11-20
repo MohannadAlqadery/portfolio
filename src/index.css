@@ -469,6 +469,21 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /*
+   * Display type defaults: bold and tight, with an emphasised word set in the muted second tone
+   * (Archivo has no italic loaded, so <em> would otherwise be a fake slant). Explicit weight
+   * utilities still win, since utilities sit above this base layer.
+   */
+  .font-display {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .font-display em {
+    font-style: normal;
+    color: var(--color-fg-subtle);
+  }
+
   ::selection {
     background-color: var(--color-signal);
     color: var(--color-canvas);
