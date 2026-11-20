@@ -48,6 +48,32 @@ test.describe('home page', () => {
     await expect(page.locator('#toolkit')).toBeInViewport()
   })
 
+  test('contact form builds a mail draft and never submits a form', async ({ page }) => {
+    await page.goto('/#contact')
+    // Capture the draft link instead of handing it to the OS mail app.
+    await page.evaluate(() => {
+      const w = window as unknown as { capturedDraft?: string }
+      HTMLAnchorElement.prototype.click = function capture(this: HTMLAnchorElement) {
+        w.capturedDraft = this.href
+      }
+    })
+    await page.getByRole('button', { name: /Create email draft/ }).click()
+    await expect(page.getByText(/Write a few words first/)).toBeVisible()
+
+    await page.getByLabel('Your name (optional)').fill('Sam')
+    await page.getByText('About a write-up').click()
+    await page.getByRole('textbox', { name: 'Message' }).fill('Loved the eSOC notes.')
+    await page.getByRole('button', { name: /Create email draft/ }).click()
+    const draft = await page.evaluate(
+      () => (window as unknown as { capturedDraft?: string }).capturedDraft,
+    )
+    expect(
+      draft?.startsWith('mailto:mohannadalqadery@gmail.com?subject=About%20a%20write-up'),
+    ).toBe(true)
+    expect(draft).toContain('body=Loved%20the%20eSOC%20notes.')
+    await expect(page.getByText(/Draft handed to your mail app/)).toBeVisible()
+  })
+
   test('contact email stays hidden until revealed', async ({ page }) => {
     await page.goto('/')
     const html = await page.content()

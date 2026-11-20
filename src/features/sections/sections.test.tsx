@@ -121,6 +121,24 @@ describe('ToolkitSection', () => {
 })
 
 describe('ContactSection', () => {
+  it('asks for a message before creating a draft', async () => {
+    const user = userEvent.setup()
+    render(<ContactSection />)
+    await user.click(screen.getByRole('button', { name: /Create email draft/ }))
+    const message = screen.getByLabelText('Message')
+    expect(message).toHaveAttribute('aria-invalid', 'true')
+    expect(message).toHaveFocus()
+    expect(screen.getByText(/Write a few words first/)).toBeInTheDocument()
+  })
+
+  it('offers the topics as a single choice', async () => {
+    const user = userEvent.setup()
+    render(<ContactSection />)
+    await user.click(screen.getByRole('radio', { name: 'Just saying hello' }))
+    expect(screen.getByRole('radio', { name: 'Just saying hello' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'A security question' })).not.toBeChecked()
+  })
+
   it('keeps the address hidden until revealed, then copies it', async () => {
     const user = userEvent.setup()
     const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined)
