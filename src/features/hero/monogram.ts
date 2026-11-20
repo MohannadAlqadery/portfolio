@@ -3,6 +3,8 @@
  * renders a portrait. Pure data, so it's deterministic for a given seed and easy to test.
  */
 
+import { createRandom, pick } from '@/lib/random'
+
 export const GRID_COLS = 36
 export const GRID_ROWS = 28
 
@@ -65,20 +67,7 @@ const A = [
 
 const LETTER_GAP = 3
 
-/** Small deterministic PRNG (mulberry32), so a seed always draws the same card. */
-export function createRandom(seed: number): () => number {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-export const pick = (pool: string, random: () => number): string =>
-  pool[Math.floor(random() * pool.length)] ?? ' '
+export { createRandom, pick }
 
 /** Cell kinds for the whole grid: letters centred, with a one-cell shadow to the lower right. */
 export function buildCells(): Cell[][] {
