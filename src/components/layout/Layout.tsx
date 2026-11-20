@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
+import { AskTerminal } from '@/features/terminal/AskTerminal'
 import { SiteFooter } from './SiteFooter'
 import { SiteHeader } from './SiteHeader'
 import { SkipLink } from './SkipLink'
@@ -15,6 +16,7 @@ export function Layout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <SiteFooter />
+      <AskTerminal />
     </CommandPaletteProvider>
   )
 }
