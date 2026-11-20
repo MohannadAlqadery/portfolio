@@ -12,8 +12,11 @@ import { toolkit } from '@/content/toolkit'
 import { formatMonth } from '@/lib/dates'
 
 export type Tone = 'plain' | 'muted' | 'signal' | 'warn'
-/** `indent` sets a line under the one before it (details of a list item). */
-export type Line = { text: string; tone?: Tone; indent?: boolean }
+/**
+ * `indent` sets a line under the one before it (details of a list item); `decrypt` makes it
+ * decrypt into place like the site's headlines (used for the revealed email address).
+ */
+export type Line = { text: string; tone?: Tone; indent?: boolean; decrypt?: boolean }
 
 export type Action =
   | { type: 'goto'; id: SectionId }

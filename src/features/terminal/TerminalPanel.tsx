@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
 } from 'react'
+import { DecryptText } from '@/components/motion/DecryptText'
 import { cn } from '@/lib/cn'
 import { getEmail } from '@/lib/email'
 import { navigate } from '@/lib/router'
@@ -90,7 +91,7 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
         toggleThemeFrom({ x: window.innerWidth - 40, y: window.innerHeight - 40 })
         break
       case 'reveal-email':
-        return [{ text: getEmail(), tone: 'signal' }]
+        return [{ text: getEmail(), tone: 'signal', decrypt: true }]
       default:
         break
     }
@@ -262,7 +263,16 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
                   line.indent && 'mb-1 pl-[2ch]',
                 )}
               >
-                {line.text}
+                {line.decrypt ? (
+                  <DecryptText
+                    text={line.text}
+                    duration={900}
+                    delay={120}
+                    glyphs="abcdefghijklmnopqrstuvwxyz0123456789#$%&*+=?"
+                  />
+                ) : (
+                  line.text
+                )}
               </m.p>
             ))}
           </div>

@@ -56,14 +56,28 @@ test.describe('ask terminal', () => {
     const terminal = page.getByRole('dialog', { name: /mohannad@soc/ })
     const input = terminal.getByRole('textbox', { name: /Ask a question/ })
 
-    // The chip types its question into the input before sending it.
+    // The chip types its question into the input before sending it: record every value the
+    // input shows, frame by frame, so the check doesn't depend on catching a moment.
+    await input.evaluate((el: HTMLInputElement) => {
+      const seen: string[] = []
+      ;(window as unknown as { seen: string[] }).seen = seen
+      const watch = () => {
+        if (el.value && seen.at(-1) !== el.value) seen.push(el.value)
+        if (el.isConnected) requestAnimationFrame(watch)
+      }
+      watch()
+    })
     await terminal.getByRole('button', { name: 'What do you do?' }).click()
-    await expect(input).toHaveValue(/^What do/)
     // Then the terminal "thinks", and the answer arrives.
     await expect(terminal.locator('[data-thinking]')).toBeVisible()
     await expect(terminal.getByRole('log')).toContainText('I’m Mohannad Alqadery, a SOC analyst.')
     await expect(terminal.locator('[data-thinking]')).toHaveCount(0)
     await expect(input).toHaveValue('')
+    const typed = await page.evaluate(() => (window as unknown as { seen: string[] }).seen)
+    expect(
+      typed.some((v) => v.length > 2 && 'What do you do?'.startsWith(v) && v !== 'What do you do?'),
+    ).toBe(true)
+    expect(typed).toContain('What do you do?')
 
     // Answer lines fade in one after another (each line starts later than the one before).
     await input.fill('help')
