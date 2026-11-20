@@ -32,6 +32,8 @@ test.describe('field notes', () => {
     await page.goto('/notes')
     const items = page.getByRole('list', { name: 'Notes' }).getByRole('listitem')
     await expect(items).toHaveCount(ALL_NOTES.length)
+    // The list is pre-rendered HTML; filters work once React has hydrated it.
+    await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
 
     await page.getByRole('button', { name: 'Phishing', exact: true }).click()
     await expect(items).toHaveCount(1)

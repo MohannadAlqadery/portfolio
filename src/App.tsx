@@ -52,6 +52,10 @@ export default function App({ pages = lazyPages }: { pages?: RoutePages }) {
 
   // Inertial page scrolling (browser only; skipped for reduced motion).
   useEffect(() => startSmoothScroll(), [])
+  // Marks the page as interactive (pre-rendered pages are inert until hydration). Tests wait on it.
+  useEffect(() => {
+    document.documentElement.dataset.hydrated = 'true'
+  }, [])
   // Lets fixed chrome hold still when a dialog hides the scrollbar.
   useEffect(() => trackScrollLockGap(), [])
 
