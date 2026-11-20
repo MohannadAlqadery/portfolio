@@ -11,7 +11,8 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'operations',
     title: 'Security Operations',
-    summary: 'The core of a shift: triage, analysis and escalation.',
+    summary:
+      'The core of a shift: triage, analysis and escalation, written up so the next analyst can follow.',
     items: [
       { name: 'Alert Triage', core: true },
       { name: 'Log Analysis', core: true },
@@ -24,7 +25,8 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'siem-edr',
     title: 'SIEM and EDR',
-    summary: 'Where alerts come from, and where I investigate them.',
+    summary:
+      'Where alerts come from, and where I pivot from an alert to the device, user and timeline behind it.',
     items: [
       { name: 'Microsoft Sentinel', core: true },
       { name: 'Defender XDR', core: true },
@@ -36,7 +38,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'query',
     title: 'Query and Scripting',
-    summary: 'Asking the logs the right questions.',
+    summary: 'Asking the logs the right questions, and scripting the repetitive parts.',
     items: [
       { name: 'KQL', core: true },
       { name: 'Splunk SPL' },
@@ -47,7 +49,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'network-host',
     title: 'Network and Host Analysis',
-    summary: 'Packets, processes and event logs.',
+    summary: 'Packets, processes and event logs: the raw evidence under every alert.',
     items: [
       { name: 'Wireshark' },
       { name: 'tcpdump' },
@@ -60,7 +62,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'detection',
     title: 'Detection and Hunting',
-    summary: 'Looking for what didn’t raise an alert.',
+    summary: 'Looking for what didn’t raise an alert, and turning findings into rules.',
     items: [
       { name: 'Threat Hunting' },
       { name: 'Suricata' },
@@ -73,7 +75,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'ir-forensics',
     title: 'Incident Response and Forensics',
-    summary: 'Containing, collecting and explaining.',
+    summary: 'Containing, collecting and explaining what happened, in order.',
     items: [
       { name: 'Incident Handling' },
       { name: 'Evidence Collection' },
@@ -83,7 +85,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'intel',
     title: 'Threat Intel and Frameworks',
-    summary: 'Context for every indicator.',
+    summary: 'Context for every indicator, and a shared language for describing attacks.',
     items: [
       { name: 'IOC Enrichment', core: true },
       { name: 'MITRE ATT&CK', core: true },
@@ -94,7 +96,7 @@ export const toolkit: ToolkitColumn[] = [
   {
     id: 'offensive',
     title: 'Penetration Testing',
-    summary: 'The attacker’s view, from eJPTv2 training.',
+    summary: 'The attacker’s view, from eJPTv2 and coursework, which makes alerts easier to judge.',
     items: [
       { name: 'Nmap' },
       { name: 'Metasploit' },

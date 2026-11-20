@@ -70,6 +70,11 @@ export function CredentialsSection() {
                     ) : null}
                   </div>
                   <p className="mt-4 text-sm leading-relaxed text-fg-muted">{credential.name}</p>
+                  {credential.focus ? (
+                    <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
+                      {credential.focus}
+                    </p>
+                  ) : null}
 
                   {credential.issued ? (
                     <dl className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 pt-6 label">

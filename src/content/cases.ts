@@ -28,10 +28,12 @@ export const cases: CaseFile[] = [
     location: 'Abu Dhabi, UAE',
     start: '2026-08',
     end: null,
-    summary: 'First line of the SOC: triage, investigation and clean escalation.',
+    summary:
+      'First line of the SOC: triage, investigation and clean escalation, so L2 starts from facts rather than guesses.',
     actions: [
       'Monitor and triage security alerts, separating true positives from false positives and classifying incidents by severity.',
       'Investigate suspicious activity across SIEM and endpoint telemetry, and escalate confirmed incidents to L2 following defined playbooks.',
+      'Enrich indicators (IPs, domains, hashes) with threat intelligence and map activity to MITRE ATT&CK before deciding on a verdict.',
       'Document investigations and actions taken in the case management system for audit and handover.',
     ],
     tags: ['Alert triage', 'SIEM', 'EDR', 'Playbooks', 'Escalation', 'Case documentation'],
@@ -51,7 +53,8 @@ export const cases: CaseFile[] = [
     location: 'Abu Dhabi, UAE',
     start: '2025-07',
     end: '2025-08',
-    summary: 'Hands-on security work inside a live enterprise environment.',
+    summary:
+      'Hands-on security work inside a live enterprise environment: labs, log review and how incidents move through a team.',
     actions: [
       'Completed hands-on network and information security labs inside a live enterprise environment.',
       'Reviewed security logs to spot suspicious activity and followed how alerts move through incident response.',
@@ -75,7 +78,8 @@ export const cases: CaseFile[] = [
     location: 'Amman, Jordan',
     start: '2024-08',
     end: '2026-06',
-    summary: 'Policy and regulatory review of sensitive client records.',
+    summary:
+      'Policy and regulatory review of sensitive client records, where careful reading and early escalation mattered most.',
     actions: [
       'Reviewed client files against company policy, program rules and national regulations, and blocked non-compliant records from moving forward.',
       'Handled sensitive personal data daily under set confidentiality and data handling procedures.',

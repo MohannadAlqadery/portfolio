@@ -52,7 +52,8 @@ const certifications: TimelineEntry[] =
               : `${formatMonth(issuedMonths[0] ?? '')} → ${formatMonth(issuedMonths.at(-1) ?? '')}`,
           title: featured.map((c) => c.code).join(' · '),
           org: [...new Set(featured.map((c) => c.issuer))].join(' · '),
-          detail: 'Certified on the SOC side and the offensive side within one summer.',
+          detail:
+            'Certified on the SOC side and the offensive side within one summer: detection and response, plus the attacker’s view.',
         },
       ]
     : []
@@ -74,7 +75,8 @@ const study: TimelineEntry[] = [
     when: formatMonth(education.start),
     title: 'Started the B.Sc.',
     org: education.school,
-    detail: 'Where the security work began: networks, labs and the first logs.',
+    detail:
+      'Where the security work began: networks, labs and the first logs, then forensics, cloud and offensive courses.',
   },
 ]
 
