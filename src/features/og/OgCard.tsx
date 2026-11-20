@@ -1,13 +1,14 @@
-import { StatusDot } from '@/components/ui/StatusDot'
 import { credentials } from '@/content/credentials'
+import { heroScene } from '@/content/hero'
 import { site } from '@/content/site'
+import { AsciiMonogram } from '@/features/hero/AsciiMonogram'
 
 /**
  * 1200×630 social preview card, rendered at /#og and captured to public/og.png by
- * `npm run og`. Uses the real fonts and tokens so it always matches the site.
+ * `npm run og`. Built from the same fonts, tokens and pieces as the site's hero.
  */
 export default function OgCard() {
-  const [firstName, ...rest] = site.name.split(' ')
+  const [first, second] = heroScene.headline
   const certs = credentials
     .filter((c) => c.featured)
     .map((c) => c.code)
@@ -16,42 +17,40 @@ export default function OgCard() {
   return (
     <div
       id="og-card"
-      className="relative flex h-[630px] w-[1200px] flex-col justify-between overflow-hidden bg-canvas p-16"
+      className="relative flex h-[630px] w-[1200px] overflow-hidden bg-canvas px-16 py-14"
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_70%_at_85%_60%,black,transparent_75%)] opacity-70"
+        className="absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_55%_70%_at_78%_50%,black,transparent_75%)] opacity-60"
       />
 
-      <div className="relative flex items-center justify-between">
+      <div className="relative flex flex-1 flex-col justify-between">
         <p className="label text-[15px] text-fg-subtle">
           {site.location.coordinates} / {site.location.city}, {site.location.country}
         </p>
-        <p className="flex items-center gap-2 label text-[15px] text-fg-muted">
-          <StatusDot /> On shift
-        </p>
-      </div>
 
-      <div className="relative">
-        <p className="font-display text-[132px] leading-[0.9] tracking-[-0.025em] text-fg">
-          {firstName} <em className="text-fg-muted">{rest.join(' ')}</em>
-        </p>
-        <p className="mt-8 max-w-[900px] text-[30px] leading-snug text-fg-muted">
-          SOC Analyst. Alert triage, investigation and incident response.
-        </p>
-      </div>
-
-      <div className="relative flex items-end justify-between">
-        <div className="flex items-center gap-4">
-          <span className="grid size-12 place-items-center rounded-md border border-line-strong font-mono text-[15px] text-fg">
-            {site.monogram}
-          </span>
-          <span className="font-mono text-[17px] text-fg-subtle">
-            <span className="text-signal">|</span> where Name =={' '}
-            <span className="text-sev-medium">"Mohannad"</span>
-          </span>
+        <div>
+          <p className="font-display text-[150px] leading-[0.84] font-extrabold tracking-[-0.02em] text-fg uppercase font-stretch-[72%]">
+            <span className="text-[0.55em] font-light text-fg-subtle font-stretch-100%">[ </span>
+            {first}
+            <br />
+            {second}
+            <span className="text-[0.55em] font-light text-fg-subtle font-stretch-100%"> ]</span>
+          </p>
+          <p className="mt-8 font-display text-[34px] font-semibold tracking-tight text-fg">
+            {site.name}
+            <span className="text-fg-subtle"> · SOC L1 · REACH Digital</span>
+          </p>
         </div>
-        <p className="font-mono text-[17px] tracking-wide text-fg-muted">{certs}</p>
+
+        <div className="flex items-center justify-between pr-10 font-mono text-[17px]">
+          <span className="text-fg-muted">{heroScene.tagline}</span>
+          <span className="tracking-wide text-fg-subtle">{certs}</span>
+        </div>
+      </div>
+
+      <div className="relative flex items-center">
+        <AsciiMonogram className="w-[300px] -rotate-3" />
       </div>
     </div>
   )
