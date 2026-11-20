@@ -3,17 +3,21 @@ import { createRandom } from '@/lib/random'
 import { getTheme, subscribeTheme } from '@/lib/theme'
 import { drawFigure } from './figure'
 import {
+  ACCESS_EVENTS,
   ADVISORIES,
   alpha,
+  ASSET_EVENTS,
   buildCity,
   buildWalkers,
   cablePoint,
+  ease,
   GROUND,
   gait,
   mix,
   packetAt,
   PANEL_WORDS,
   paletteFor,
+  presence,
   PROFILES,
   ROW_FEET,
   ROW_HEIGHT,
@@ -23,6 +27,7 @@ import {
   type City,
   type Palette,
   type Severity,
+  type Storefront,
   type Tokens,
   type Tower,
   type Walker,
@@ -200,6 +205,20 @@ function drawSign(
   ctx.shadowBlur = 0
 }
 
+/** Door and badge-reader geometry of an access-controlled front, in px. */
+function readerOf(front: Extract<Storefront, { kind: 'access' }>, H: number) {
+  const doorW = front.door * H
+  const doorX = front.x * H - doorW / 2
+  const size = Math.max(5, H * 0.014)
+  return {
+    doorX,
+    doorW,
+    size,
+    x: doorX + doorW + size * 1.4,
+    y: (GROUND - SHOP_H * 0.42) * H,
+  }
+}
+
 function renderStatic(city: City, w: number, H: number, dpr: number, p: Palette) {
   const { c, ctx } = layer(w, H, dpr)
   if (!ctx) return c
@@ -243,20 +262,57 @@ function renderStatic(city: City, w: number, H: number, dpr: number, p: Palette)
   const near = city.towers.filter((t) => t.layer === 2)
   for (const t of near) drawTower(ctx, t, H, p, random)
 
-  // Ground floors: shopfronts with lit glass and a sign each.
-  near.forEach((t, k) => {
+  // Ground floors: watched street assets (lit glass and a sign) alternate with access-controlled
+  // fronts (dark glass, a door and a badge reader whose LED is drawn live).
+  for (const front of city.storefronts) {
+    const t = city.towers[front.tower]
+    if (!t) continue
     const x = t.x * H
     const tw = t.w * H
     const top = (GROUND - SHOP_H) * H
+    const glassY = top + SHOP_H * H * 0.42
+    const glassH = SHOP_H * H * 0.5
     ctx.fillStyle = p.shop
     ctx.fillRect(x, top, tw, SHOP_H * H)
     ctx.fillStyle = p.edge
     ctx.fillRect(x, top, tw, 1)
-    ctx.fillStyle = p.shopGlow
-    ctx.fillRect(x + tw * 0.06, top + SHOP_H * H * 0.42, tw * 0.88, SHOP_H * H * 0.5)
-    const sign = city.signs[k]
-    if (sign) drawSign(ctx, sign.text, sign.vertical, sign.x * H, top + SHOP_H * H * 0.08, H, p)
-  })
+    if (front.kind === 'asset') {
+      ctx.fillStyle = p.shopGlow
+      ctx.fillRect(x + tw * 0.06, glassY, tw * 0.88, glassH)
+      drawSign(ctx, front.asset, front.vertical, front.x * H, top + SHOP_H * H * 0.08, H, p)
+    } else {
+      // Tinted glass with two soft diagonal reflections, mullions and a door.
+      const gx = x + tw * 0.06
+      const gw = tw * 0.88
+      const gy = top + SHOP_H * H * 0.28
+      const gh = GROUND * H - gy
+      ctx.fillStyle = p.night ? mix(p.shop, '#000000', 0.55) : mix(p.shop, p.ink, 0.18)
+      ctx.fillRect(gx, gy, gw, gh)
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(gx, gy, gw, gh)
+      ctx.clip()
+      ctx.fillStyle = alpha(p.ink, p.night ? 0.05 : 0.08)
+      for (const off of [0.18, 0.62]) {
+        ctx.beginPath()
+        ctx.moveTo(gx + gw * off, gy + gh)
+        ctx.lineTo(gx + gw * off + gh * 0.6, gy)
+        ctx.lineTo(gx + gw * off + gh * 0.6 + gw * 0.06, gy)
+        ctx.lineTo(gx + gw * off + gw * 0.06, gy + gh)
+        ctx.fill()
+      }
+      ctx.restore()
+      ctx.fillStyle = p.edge
+      for (let m = 1; m < 4; m++) ctx.fillRect(gx + (gw * m) / 4, gy, 1, gh)
+      const door = readerOf(front, H)
+      ctx.strokeStyle = p.edge
+      ctx.lineWidth = 1
+      ctx.strokeRect(door.doorX + 0.5, gy + 0.5, door.doorW, gh)
+      // Reader housing; its LED is drawn per frame.
+      ctx.fillStyle = p.night ? mix(p.sky, '#000000', 0.4) : mix(p.ink, p.sky, 0.25)
+      ctx.fillRect(door.x - door.size / 2, door.y - door.size, door.size, door.size * 1.6)
+    }
+  }
 
   // Housings for the ticker and the vertical screens (their text is drawn live).
   const led = p.night ? mix(p.sky, '#000000', 0.6) : mix(p.ink, p.sky, 0.08)
@@ -380,6 +436,16 @@ type TowerJob =
       windows: number[]
     }
 
+type SiteEvent = {
+  front: number
+  start: number
+  resolveAt: number
+  end: number
+  first: [string, string]
+  then: [string, string]
+  sev: Severity
+}
+
 type Profile = {
   walker: number
   start: number
@@ -413,8 +479,11 @@ export default function CityWatch() {
     let ticker: { c: HTMLCanvasElement; width: number } | null = null
     let walkers: Walker[] = []
     let rain: { x: number; y: number; len: number; speed: number }[] = []
-    /** Vulnerable windows per tower index, with their severity. Survives theme switches. */
-    let vulns = new Map<number, Map<number, Severity>>()
+    /** Vulnerable windows per tower index: severity and when it appeared. Survives theme switches. */
+    let vulns = new Map<number, Map<number, { sev: Severity; since: number }>>()
+    /** Events on ground-floor assets and badge readers. */
+    let siteEvents: SiteEvent[] = []
+    let nextSite = 0
     let jobs: TowerJob[] = []
     let profiles: Profile[] = []
     let nextJob = 0
@@ -432,9 +501,12 @@ export default function CityWatch() {
       vulns = new Map()
       for (const { t, i } of watched()) {
         const n = Math.floor(random() * 3)
-        const set = new Map<number, Severity>()
+        const set = new Map<number, { sev: Severity; since: number }>()
         for (let k = 0; k < n; k++)
-          set.set(Math.floor(random() * t.cols * t.rows), random() < 0.3 ? 'high' : 'medium')
+          set.set(Math.floor(random() * t.cols * t.rows), {
+            sev: random() < 0.3 ? 'high' : 'medium',
+            since: -1e6,
+          })
         if (set.size) vulns.set(i, set)
       }
     }
@@ -456,6 +528,7 @@ export default function CityWatch() {
         seedVulns()
         jobs = []
         profiles = []
+        siteEvents = []
       }
       staticLayer = renderStatic(city, W, H, dpr, p)
       fog = renderFog(W, H, dpr, p)
@@ -534,13 +607,15 @@ export default function CityWatch() {
       }
 
       // Aviation lights on masts and spires.
-      if (p.night && Math.floor(t / 1100) % 2 === 0) {
+      if (p.night) {
         ctx.fillStyle = p.ink
+        ctx.globalAlpha = reduce ? 0.8 : ease(0.5 + 0.5 * Math.sin(t / 520))
         for (const tw of L.towers) {
           if (tw.crown !== 'mast' && tw.crown !== 'spire') continue
           const peak = topOf(tw) * H - (tw.crown === 'mast' ? 0.1 : 0.12) * H
           ctx.fillRect(tw.x * H + (tw.w * H) / 2 - 1, peak - 2, 2, 2)
         }
+        ctx.globalAlpha = 1
       }
 
       // SOC work on the buildings.
@@ -559,10 +634,10 @@ export default function CityWatch() {
       for (const [ti, set] of vulns) {
         const tw = L.towers[ti]
         if (!tw) continue
-        for (const [wi, sev] of set) {
+        for (const [wi, { sev, since }] of set) {
           const r = windowRect(tw, wi, H)
           ctx.fillStyle = sevColor(p, sev)
-          ctx.globalAlpha = pulse
+          ctx.globalAlpha = pulse * (reduce ? 1 : ease((t - since) / 600))
           if (p.night) {
             ctx.shadowColor = sevColor(p, sev)
             ctx.shadowBlur = H * 0.02
@@ -584,7 +659,8 @@ export default function CityWatch() {
         const w = tw.w * H
         const top = topOf(tw) * H
         const bottom = (GROUND - (tw.layer === 2 ? SHOP_H : 0)) * H
-        const k = reduce ? 0.62 : Math.min(1, (t - job.start) / job.dur)
+        const k = reduce ? 0.62 : ease((t - job.start) / job.dur)
+        const shown = reduce ? 1 : presence(t, job.start, job.start + job.dur + 1600, 320, 700)
         if (job.kind === 'patch') {
           // A patch rolls up the building; vulnerable windows it passes flash and go dark.
           const y = bottom - (bottom - top) * k
@@ -622,7 +698,7 @@ export default function CityWatch() {
             k < 1
               ? `${tw.host} · PATCHING ${Math.round(k * 100)}%`
               : `${tw.host} · PATCHED · ${job.fixed} CVE`
-          tag(x + 4, top - H * 0.035, label, p.night ? p.ink : p.ink, k)
+          tag(x + 4, top - H * 0.035, label, p.ink, k, shown)
         } else {
           // A new CVE pings in: rings on the affected windows, then they turn vulnerable.
           const color = sevColor(p, job.sev)
@@ -630,18 +706,19 @@ export default function CityWatch() {
             const r = windowRect(tw, wi, H)
             const ring = ((t - job.start) % 900) / 900
             if (k < 1) {
-              ctx.strokeStyle = alpha(color, 1 - ring)
+              ctx.strokeStyle = alpha(color, (1 - ring) * shown)
               ctx.lineWidth = 1.5
               ctx.beginPath()
               ctx.arc(r.x + r.w / 2, r.y + r.h / 2, 3 + ring * H * 0.05, 0, Math.PI * 2)
               ctx.stroke()
             } else {
-              const set = vulns.get(job.tower) ?? new Map<number, Severity>()
-              set.set(wi, job.sev === 'critical' ? 'critical' : job.sev)
+              const set =
+                vulns.get(job.tower) ?? new Map<number, { sev: Severity; since: number }>()
+              if (!set.has(wi)) set.set(wi, { sev: job.sev, since: t })
               vulns.set(job.tower, set)
             }
           }
-          tag(x + 4, top - H * 0.035, job.label, color, 1)
+          tag(x + 4, top - H * 0.035, job.label, color, 1, shown)
         }
       }
 
@@ -669,6 +746,7 @@ export default function CityWatch() {
           const bad = (cycle * 7 + k * 3 + ci) % 6 === 0
           if (bad && s > cable.firewall) {
             if (s - cable.firewall < 0.08) {
+              ctx.globalAlpha = reduce ? 1 : ease(1 - (s - cable.firewall) / 0.08)
               ctx.strokeStyle = p.critical
               ctx.lineWidth = 1.5
               const cx = fw.x * H
@@ -683,6 +761,7 @@ export default function CityWatch() {
               ctx.fillStyle = p.critical
               ctx.fillText('DROP', cx + 7, cy + 4)
               ctx.font = font
+              ctx.globalAlpha = 1
             }
             continue
           }
@@ -718,15 +797,18 @@ export default function CityWatch() {
         ctx.restore()
       }
 
-      // Vertical screens cycle short security words, with a wipe between them.
+      // Vertical screens cycle short security words, cross-fading between them.
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       for (const [pi, panel] of L.panels.entries()) {
-        const cycle = reduce ? pi : Math.floor(t / 3600 + pi * 0.6)
+        const at = t / 4200 + pi * 0.6
+        const cycle = reduce ? pi : Math.floor(at)
+        const fade = reduce ? 1 : Math.min(ease((at % 1) / 0.14), ease((1 - (at % 1)) / 0.14))
         const word = PANEL_WORDS[(cycle + pi) % PANEL_WORDS.length] ?? 'PATCH'
         const size = Math.min(panel.w * H * 0.62, (panel.h * H) / (word.length + 1))
         ctx.font = `600 ${size}px ${MONO}`
         ctx.fillStyle = p.night ? p.ink : p.sky
+        ctx.globalAlpha = fade
         if (p.night) {
           ctx.shadowColor = p.ink
           ctx.shadowBlur = size * 0.6
@@ -735,16 +817,7 @@ export default function CityWatch() {
         const startY = panel.y * H + (panel.h * H - word.length * size) / 2 + size / 2
         Array.from(word).forEach((ch, i) => ctx.fillText(ch, cx, startY + i * size))
         ctx.shadowBlur = 0
-        const wipe = reduce ? 1 : ((t / 3600 + pi * 0.6) % 1) * 8
-        if (wipe < 1) {
-          ctx.fillStyle = p.night ? mix(p.sky, '#000000', 0.6) : mix(p.ink, p.sky, 0.08)
-          ctx.fillRect(
-            panel.x * H,
-            panel.y * H + panel.h * H * wipe,
-            panel.w * H,
-            panel.h * H * (1 - wipe),
-          )
-        }
+        ctx.globalAlpha = 1
       }
       ctx.font = font
 
@@ -777,9 +850,60 @@ export default function CityWatch() {
         ctx.fillRect(dx - s * 1.6, dy - s * 0.3, s * 3.2, s * 0.6)
         ctx.fillRect(dx - s * 2.2, dy - s * 0.7, s * 1.2, 1)
         ctx.fillRect(dx + s, dy - s * 0.7, s * 1.2, 1)
-        if (Math.floor(t / 600 + d) % 2 === 0) {
-          ctx.fillStyle = p.night ? p.ink : p.critical
-          ctx.fillRect(dx - 1, dy + s * 0.3, 2, 2)
+        ctx.fillStyle = p.night ? p.ink : p.critical
+        ctx.globalAlpha = reduce ? 1 : ease(0.5 + 0.5 * Math.sin(t / 380 + d * 2))
+        ctx.fillRect(dx - 1, dy + s * 0.3, 2, 2)
+        ctx.globalAlpha = 1
+      }
+
+      // Ground-floor assets and badge readers: the SOC watches the street level too.
+      const fronts = L.storefronts
+      if (!reduce && t > nextSite && siteEvents.length < 1) {
+        const free = fronts
+          .map((f, i) => ({ f, i }))
+          .filter(({ f }) => f.x * H > W * 0.08 && f.x * H < W * 0.85)
+        const pick = free[Math.floor(random() * free.length)]
+        if (pick) {
+          const ev =
+            pick.f.kind === 'asset'
+              ? ASSET_EVENTS[pick.f.asset]
+              : ACCESS_EVENTS[Math.floor(random() * ACCESS_EVENTS.length)]
+          if (ev)
+            siteEvents.push({ front: pick.i, start: t, resolveAt: t + 2200, end: t + 4600, ...ev })
+        }
+        nextSite = t + 3800 + random() * 2600
+      }
+      if (reduce && !siteEvents.length) {
+        const i = fronts.findIndex((f) => f.kind === 'asset' && f.x * H > W * 0.3)
+        const f = fronts[i]
+        if (f?.kind === 'asset')
+          siteEvents.push({
+            front: i,
+            start: -1,
+            resolveAt: -1,
+            end: Infinity,
+            ...ASSET_EVENTS[f.asset],
+          })
+      }
+      siteEvents = siteEvents.filter((ev) => ev.end > t)
+      for (const [i, f] of fronts.entries()) {
+        if (f.kind !== 'access') continue
+        const r = readerOf(f, H)
+        const ev = siteEvents.find((e) => e.front === i)
+        // Idle: a steady dim light. Alert: a slow amber breath. Resolved: eases back to idle.
+        const alert = ev && t < ev.resolveAt ? presence(t, ev.start, ev.resolveAt, 300, 500) : 0
+        ctx.fillStyle = p.night ? alpha(p.ink, 0.55) : p.inkFaint
+        ctx.fillRect(r.x - 1.5, r.y - r.size * 0.6, 3, 3)
+        if (alert > 0 && ev) {
+          ctx.globalAlpha = alert * (0.55 + 0.45 * Math.sin(t / 220))
+          ctx.fillStyle = sevColor(p, ev.sev)
+          if (p.night) {
+            ctx.shadowColor = ctx.fillStyle
+            ctx.shadowBlur = H * 0.02
+          }
+          ctx.fillRect(r.x - 2, r.y - r.size * 0.6 - 0.5, 4, 4)
+          ctx.shadowBlur = 0
+          ctx.globalAlpha = 1
         }
       }
 
@@ -877,15 +1001,18 @@ export default function CityWatch() {
       for (const pr of profiles) {
         const pos = positions.get(pr.walker)
         if (!pos) continue
-        const resolved = t >= pr.resolveAt && pr.then
-        const lines = resolved && pr.then ? pr.then : pr.first
-        const color = !resolved && pr.sev ? sevColor(p, pr.sev) : p.ink
-        const appear = reduce ? 1 : Math.min(1, (t - pr.start) / 220)
+        // Eased in and out; a flagged finding cross-fades to its resolution.
+        const shown = reduce ? 1 : presence(t, pr.start, pr.end, 300, 650)
+        const toThen = pr.then ? (reduce ? 1 : ease((t - pr.resolveAt) / 450)) : 0
+        const sevTone = pr.sev ? sevColor(p, pr.sev) : p.ink
+        const color = mix(sevTone, p.ink, toThen)
+        const grow = reduce ? 1 : ease((t - pr.start) / 380)
         const bw = pos.size * 0.42
         const bh = pos.size * 1.06
         const bx = pos.x - bw / 2
         const by = pos.feet - bh
-        const k = Math.min(9, bw * 0.28) * appear
+        const k = Math.min(9, bw * 0.28) * grow
+        ctx.globalAlpha = shown
         ctx.strokeStyle = color
         ctx.lineWidth = 1.25
         ctx.beginPath()
@@ -901,7 +1028,8 @@ export default function CityWatch() {
         }
         // Leader line up to the card, which flips to the left near the right edge.
         ctx.font = font
-        const tw = Math.max(ctx.measureText(lines[0]).width, ctx.measureText(lines[1]).width)
+        const all = [...pr.first, ...(pr.then ?? [])]
+        const tw = Math.max(...all.map((l) => ctx.measureText(l).width))
         const cardW = tw + 12
         const right = bx + bw + H * 0.03 + cardW < W - 4
         const anchorX = right ? bx + bw : bx
@@ -910,18 +1038,37 @@ export default function CityWatch() {
         ctx.moveTo(anchorX, by)
         ctx.lineTo(right ? lx : lx + cardW, ly)
         ctx.stroke()
-        if (appear < 1) continue
         const lh = fontSize * 1.25
-        ctx.fillStyle = alpha(p.sky, 0.82)
+        ctx.fillStyle = alpha(p.sky, 0.84)
         ctx.fillRect(lx, ly - lh * 2 - 4, cardW, lh * 2 + 6)
         ctx.fillStyle = color
         ctx.fillRect(lx, ly - lh * 2 - 4, 2, lh * 2 + 6)
         ctx.textAlign = 'left'
         ctx.textBaseline = 'bottom'
-        ctx.fillStyle = color
-        ctx.fillText(lines[0], lx + 8, ly - lh - 1)
-        ctx.fillStyle = resolved || !pr.sev ? p.inkSoft : color
-        ctx.fillText(lines[1], lx + 8, ly)
+        for (const [lines, weight, resolved] of [
+          [pr.first, 1 - toThen, false],
+          [pr.then ?? pr.first, toThen, true],
+        ] as const) {
+          if (weight <= 0) continue
+          ctx.globalAlpha = shown * weight
+          const tone = resolved || !pr.sev ? p.ink : sevTone
+          ctx.fillStyle = tone
+          ctx.fillText(lines[0], lx + 8, ly - lh - 1)
+          ctx.fillStyle = resolved || !pr.sev ? p.inkSoft : sevTone
+          ctx.fillText(lines[1], lx + 8, ly)
+        }
+        ctx.globalAlpha = 1
+      }
+
+      // Cards for the street-level events, fading in, cross-fading to the resolution, fading out.
+      for (const ev of siteEvents) {
+        const f = fronts[ev.front]
+        if (!f) continue
+        const shown = reduce ? 1 : presence(t, ev.start, ev.end, 360, 600)
+        const toThen = reduce ? 1 : ease((t - ev.resolveAt) / 450)
+        const anchorX = f.kind === 'access' ? readerOf(f, H).x : f.x * H
+        const anchorY = (GROUND - SHOP_H) * H + SHOP_H * H * 0.08
+        card(anchorX, anchorY - H * 0.012, ev.first, ev.then, ev.sev, shown, toThen)
       }
 
       // HUD, top left: the SOC's view of the district (stacked on narrow screens).
@@ -949,8 +1096,53 @@ export default function CityWatch() {
         wrap.dataset.profiles = String(profiles.length)
     }
 
+    /**
+     * A two-line status card with a severity stripe. `shown` fades it in and out; `toThen`
+     * cross-fades from the finding to its resolution (and the stripe from severity to neutral).
+     */
+    const card = (
+      ax: number,
+      ay: number,
+      first: [string, string],
+      then: [string, string],
+      sev: Severity,
+      shown: number,
+      toThen: number,
+    ) => {
+      if (shown <= 0) return
+      const fs = Math.max(9, H * 0.024)
+      ctx.font = `600 ${fs}px ${MONO}`
+      const tw = Math.max(...[...first, ...then].map((l) => ctx.measureText(l).width))
+      const cw = tw + 14
+      const lh = fs * 1.25
+      const ch = lh * 2 + 6
+      const x = Math.max(4, Math.min(ax - cw / 2, W - cw - 4))
+      const y = ay - ch
+      ctx.globalAlpha = shown
+      ctx.fillStyle = alpha(p.sky, 0.86)
+      ctx.fillRect(x, y, cw, ch)
+      ctx.fillStyle = mix(sevColor(p, sev), p.ink, toThen)
+      ctx.fillRect(x, y, 2, ch)
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'bottom'
+      for (const [lines, a, resolved] of [
+        [first, 1 - toThen, false],
+        [then, toThen, true],
+      ] as const) {
+        if (a <= 0) continue
+        ctx.globalAlpha = shown * a
+        ctx.fillStyle = resolved ? p.ink : sevColor(p, sev)
+        ctx.fillText(lines[0], x + 9, y + lh + 2)
+        ctx.fillStyle = resolved ? p.inkSoft : sevColor(p, sev)
+        ctx.fillText(lines[1], x + 9, y + lh * 2 + 2)
+      }
+      ctx.globalAlpha = 1
+    }
+
     /** A small mono label with a tick under it, used above buildings. */
-    const tag = (at: number, y: number, text: string, color: string, k: number) => {
+    const tag = (at: number, y: number, text: string, color: string, k: number, shown = 1) => {
+      if (shown <= 0) return
+      ctx.globalAlpha = shown
       ctx.textAlign = 'left'
       ctx.textBaseline = 'bottom'
       const tw = ctx.measureText(text).width
@@ -962,6 +1154,7 @@ export default function CityWatch() {
       ctx.fillStyle = color
       ctx.fillText(text, x, y)
       ctx.fillRect(x - 3, y + 2, Math.max(4, (tw + 6) * Math.min(1, k)), 1)
+      ctx.globalAlpha = 1
     }
 
     const loop = (t: number) => {

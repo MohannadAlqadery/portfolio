@@ -134,7 +134,15 @@ export type Tower = {
   host: string
 }
 
-export type Sign = { x: number; text: string; vertical: boolean }
+/**
+ * Ground floors alternate between two kinds, so the street stays balanced:
+ * - `asset`: a street fixture the SOC also watches (ATM, public Wi-Fi, CCTV…), with a lit sign;
+ * - `access`: a dark glass front with a keycard reader and a status LED by the door.
+ */
+export type Asset = 'ATM' | 'FREE WI-FI' | 'CCTV' | 'EV CHARGE' | 'PHARMACY' | 'PARKING' | '24H'
+export type Storefront =
+  | { kind: 'asset'; tower: number; x: number; asset: Asset; vertical: boolean }
+  | { kind: 'access'; tower: number; x: number; door: number }
 export type Panel = { tower: number; x: number; y: number; w: number; h: number }
 export type Cable = {
   x1: number
@@ -147,13 +155,13 @@ export type Cable = {
 
 export type City = {
   towers: Tower[]
-  signs: Sign[]
+  storefronts: Storefront[]
   panels: Panel[]
   cables: Cable[]
   ticker: { x: number; y: number; w: number; h: number } | null
 }
 
-const SIGN_WORDS = ['24H', 'OPEN', 'REPAIR', 'SIM', 'VPN', 'مقهى', 'NET', 'LAB', 'FIX', 'TEA']
+const ASSETS: Asset[] = ['FREE WI-FI', 'ATM', 'CCTV', 'EV CHARGE', 'PHARMACY', 'PARKING', '24H']
 
 type Range = readonly [number, number]
 /** Far towers are slim and tall, near ones wide and lower (their roofs sit in front of the rest). */
@@ -205,20 +213,48 @@ export function buildCity(span: number, seed = 11): City {
   ]
   const near = towers.map((t, i) => ({ t, i })).filter(({ t }) => t.layer === 2)
 
-  // One sign per shopfront, in a different word each time.
-  let word = Math.floor(random() * SIGN_WORDS.length)
-  const signs: Sign[] = near.map(({ t }) => {
-    const text = SIGN_WORDS[word++ % SIGN_WORDS.length] ?? 'OPEN'
-    return {
-      x: t.x + t.w * (0.22 + random() * 0.56),
-      text,
-      vertical: text.length <= 4 && /^[A-Z0-9]+$/.test(text) && random() < 0.45,
-    }
+  // Ground floors alternate asset / access (with the odd repeat), so neither kind clumps.
+  let next = Math.floor(random() * ASSETS.length)
+  let kind: Storefront['kind'] = random() < 0.5 ? 'asset' : 'access'
+  let prev: Storefront['kind'] | null = null
+  let run = 0
+  const storefronts: Storefront[] = near.map(({ t, i }) => {
+    const front: Storefront =
+      kind === 'asset'
+        ? (() => {
+            const asset = ASSETS[next++ % ASSETS.length] ?? 'ATM'
+            return {
+              kind: 'asset' as const,
+              tower: i,
+              x: t.x + t.w * (0.25 + random() * 0.5),
+              asset,
+              vertical: asset.length <= 4 && random() < 0.45,
+            }
+          })()
+        : {
+            kind: 'access',
+            tower: i,
+            x: t.x + t.w * (0.3 + random() * 0.4),
+            door: 0.07 + random() * 0.02,
+          }
+    // Usually alternate; repeat now and then, but never three of a kind in a row.
+    run = front.kind === prev ? run + 1 : 1
+    prev = front.kind
+    if (run >= 2 || random() < 0.8) kind = kind === 'asset' ? 'access' : 'asset'
+    return front
   })
 
+  // A scrolling advisory ticker wrapped around the widest mid-height near building.
+  const central = near
+    .map(({ t }) => t)
+    .filter((t) => t.x + t.w / 2 > span * 0.2 && t.x + t.w / 2 < span * 0.8)
+  const host = central.sort((p, q) => q.w - p.w)[0] ?? near[0]?.t
+  const ticker = host ? { x: host.x, y: GROUND - SHOP_H - 0.075, w: host.w, h: 0.045 } : null
+
   // Tall vertical screens on some near buildings (advisories cycle through them).
+  // (Never on the ticker's building, so the two don't overlap.)
   const panels: Panel[] = near
-    .filter(() => random() < 0.45)
+    .filter(({ t }) => t !== host && random() < 0.45)
     .map(({ t, i }) => {
       const w = 0.035
       const h = Math.min(0.2, t.h - SHOP_H - 0.06)
@@ -251,14 +287,7 @@ export function buildCity(span: number, seed = 11): City {
     })
   }
 
-  // A scrolling advisory ticker wrapped around the widest mid-height near building.
-  const central = near
-    .map(({ t }) => t)
-    .filter((t) => t.x + t.w / 2 > span * 0.2 && t.x + t.w / 2 < span * 0.8)
-  const host = central.sort((p, q) => q.w - p.w)[0] ?? near[0]?.t
-  const ticker = host ? { x: host.x, y: GROUND - SHOP_H - 0.075, w: host.w, h: 0.045 } : null
-
-  return { towers, signs, panels, cables, ticker }
+  return { towers, storefronts, panels, cables, ticker }
 }
 
 /** Top of a tower's body (before its crown), in scene heights from the top. */
@@ -335,13 +364,13 @@ export function buildWalkers(count: number, seed = 5): Walker[] {
 }
 
 /**
- * Walking speed in scene heights per second: about 0.8 body heights a second, like a real
- * person, with steps that match (roughly two a second) so feet don't skate.
+ * Walking speed in scene heights per second: about 0.7 body heights a second, an unhurried city
+ * pace, with steps that match (a little under two a second) so feet don't skate.
  */
-export const walkSpeed = (w: Walker) => 0.8 * ROW_HEIGHT[w.row] * w.height * w.pace
+export const walkSpeed = (w: Walker) => 0.68 * ROW_HEIGHT[w.row] * w.height * w.pace
 
 /** Steps per second for a walker. */
-export const cadence = (w: Walker) => (w.pace ? 1.55 + 0.5 * w.pace : 0)
+export const cadence = (w: Walker) => (w.pace ? 1.35 + 0.45 * w.pace : 0)
 
 /** Where a walker is (px) at time `t` on a street `widthPx` wide and `heightPx` tall; wraps. */
 export function walkerX(w: Walker, t: number, widthPx: number, heightPx: number): number {
@@ -407,4 +436,75 @@ export function cablePoint(c: Cable, s: number): { x: number; y: number } {
     x: c.x1 + (c.x2 - c.x1) * s,
     y: c.y1 + (c.y2 - c.y1) * s + Math.sin(Math.PI * s) * c.sag,
   }
+}
+
+/** What the SOC can find on a street asset, and how it gets resolved. */
+export const ASSET_EVENTS: Record<
+  Asset,
+  { first: [string, string]; then: [string, string]; sev: Severity }
+> = {
+  'FREE WI-FI': { first: ['ROGUE AP', 'SSID SPOOFED'], then: ['ROGUE AP', 'BLOCKED'], sev: 'high' },
+  CCTV: {
+    first: ['CCTV · CAM 12', 'DEFAULT PASSWORD'],
+    then: ['CCTV · CAM 12', 'CREDENTIALS ROTATED'],
+    sev: 'high',
+  },
+  ATM: {
+    first: ['ATM · FIRMWARE 2.1', 'OUTDATED'],
+    then: ['ATM · FIRMWARE 2.4', 'UPDATED'],
+    sev: 'medium',
+  },
+  'EV CHARGE': {
+    first: ['EV CHARGER', 'OCPP ANOMALY'],
+    then: ['EV CHARGER', 'SESSION RESET'],
+    sev: 'medium',
+  },
+  PHARMACY: {
+    first: ['POS TERMINAL', 'MALWARE IOC'],
+    then: ['POS TERMINAL', 'ISOLATED'],
+    sev: 'critical',
+  },
+  PARKING: {
+    first: ['PAY-BY-QR', 'TAMPERED CODE'],
+    then: ['PAY-BY-QR', 'REPLACED'],
+    sev: 'medium',
+  },
+  '24H': { first: ['TLS CERT', 'EXPIRES IN 2 DAYS'], then: ['TLS CERT', 'RENEWED'], sev: 'medium' },
+}
+
+/** Badge-reader events on the access-controlled fronts. */
+export const ACCESS_EVENTS: { first: [string, string]; then: [string, string]; sev: Severity }[] = [
+  {
+    first: ['BADGE 4471', 'ACCESS DENIED ×3'],
+    then: ['BADGE 4471', 'LOCKED · REVIEWED'],
+    sev: 'medium',
+  },
+  { first: ['DOOR 2B', 'TAILGATING?'], then: ['DOOR 2B', 'CLEARED · ESCORTED'], sev: 'medium' },
+  { first: ['DOOR 1A', 'HELD OPEN 90 S'], then: ['DOOR 1A', 'CLOSED'], sev: 'medium' },
+  { first: ['BADGE 0912', 'CLONED CARD?'], then: ['BADGE 0912', 'REVOKED'], sev: 'high' },
+]
+
+/* ---------------------------------------------------------------------------------------------- */
+/* Easing                                                                                          */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** Smoothstep: eases in and out, clamped to 0–1. */
+export function ease(x: number): number {
+  const k = Math.min(1, Math.max(0, x))
+  return k * k * (3 - 2 * k)
+}
+
+/**
+ * Opacity of something shown from `start` to `end` (ms): it eases in over `fadeIn` and out over
+ * `fadeOut`, so nothing on the street ever pops in or vanishes.
+ */
+export function presence(
+  t: number,
+  start: number,
+  end: number,
+  fadeIn = 320,
+  fadeOut = 480,
+): number {
+  if (t <= start || t >= end) return 0
+  return Math.min(ease((t - start) / fadeIn), ease((end - t) / fadeOut))
 }

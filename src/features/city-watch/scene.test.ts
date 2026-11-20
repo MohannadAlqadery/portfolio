@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ACCESS_EVENTS,
+  ASSET_EVENTS,
+  ease,
+  presence,
   ADVISORIES,
   alpha,
   buildCity,
@@ -113,10 +117,10 @@ describe('city watch: layout', () => {
     expect(maxW(wide)).toBeLessThanOrEqual(0.42)
   })
 
-  it('gives each near building a shop sign and keeps screens on their building', () => {
+  it('gives each near building a ground floor and keeps screens on their building', () => {
     const city = buildCity(3)
     const near = city.towers.filter((t) => t.layer === 2)
-    expect(city.signs).toHaveLength(near.length)
+    expect(city.storefronts).toHaveLength(near.length)
     for (const panel of city.panels) {
       const t = city.towers[panel.tower]
       expect(panel.x).toBeGreaterThanOrEqual(t?.x ?? Infinity)
@@ -140,9 +144,16 @@ describe('city watch: people', () => {
     const walkers = buildWalkers(40).filter((w) => w.pace > 0)
     for (const w of walkers) {
       // Roughly 0.6–1 body heights a second, and steps that keep up with it.
-      expect(walkSpeed(w) / (w.height * ROW_HEIGHT[w.row])).toBeGreaterThan(0.55)
-      expect(cadence(w)).toBeGreaterThan(1.8)
-      expect(cadence(w)).toBeLessThan(2.3)
+      // An unhurried city pace: about 0.5–0.8 body heights a second, under two steps a second.
+      const bodies = walkSpeed(w) / (w.height * ROW_HEIGHT[w.row])
+      expect(bodies).toBeGreaterThan(0.48)
+      expect(bodies).toBeLessThan(0.85)
+      expect(cadence(w)).toBeGreaterThan(1.6)
+      expect(cadence(w)).toBeLessThan(1.95)
+      // Stride stays about 0.3–0.45 of body height, so feet don't skate.
+      const stride = bodies / cadence(w)
+      expect(stride).toBeGreaterThan(0.28)
+      expect(stride).toBeLessThan(0.46)
     }
     const [w] = walkers
     if (!w) throw new Error('no walker')
@@ -200,5 +211,59 @@ describe('city watch: security events', () => {
     ].join(' ')
     for (const word of ['CVE', 'PATCH', 'ANOMALY', 'UPDATE', 'BLOCKED'])
       expect(text).toContain(word)
+  })
+})
+
+describe('city watch: street level', () => {
+  it('balances watched assets and access-controlled fronts', () => {
+    for (const span of [1.3, 2.8, 6]) {
+      const fronts = buildCity(span).storefronts
+      const assets = fronts.filter((f) => f.kind === 'asset').length
+      const access = fronts.length - assets
+      expect(Math.abs(assets - access)).toBeLessThanOrEqual(
+        Math.max(1, Math.ceil(fronts.length * 0.25)),
+      )
+    }
+  })
+
+  it('never puts three of a kind in a row', () => {
+    const kinds = buildCity(8).storefronts.map((f) => f.kind)
+    kinds.slice(2).forEach((k, i) => {
+      expect(k === kinds[i] && k === kinds[i + 1]).toBe(false)
+    })
+  })
+
+  it('has a finding and a resolution for every asset and badge reader', () => {
+    for (const ev of [...Object.values(ASSET_EVENTS), ...ACCESS_EVENTS]) {
+      expect(ev.first).toHaveLength(2)
+      expect(ev.then).toHaveLength(2)
+      expect(ev.first).not.toEqual(ev.then)
+    }
+  })
+})
+
+describe('city watch: easing', () => {
+  it('eases in and out, clamped', () => {
+    expect(ease(-1)).toBe(0)
+    expect(ease(0)).toBe(0)
+    expect(ease(0.5)).toBe(0.5)
+    expect(ease(1)).toBe(1)
+    expect(ease(2)).toBe(1)
+    expect(ease(0.1)).toBeLessThan(0.1)
+  })
+
+  it('fades things in and out instead of popping', () => {
+    expect(presence(0, 0, 4000)).toBe(0)
+    expect(presence(160, 0, 4000)).toBeCloseTo(0.5)
+    expect(presence(2000, 0, 4000)).toBe(1)
+    expect(presence(3760, 0, 4000)).toBeCloseTo(0.5)
+    expect(presence(4000, 0, 4000)).toBe(0)
+    // Never jumps more than a small step between 60 Hz frames.
+    let prev = 0
+    for (let t = 0; t <= 4000; t += 1000 / 60) {
+      const v = presence(t, 0, 4000)
+      expect(Math.abs(v - prev)).toBeLessThan(0.1)
+      prev = v
+    }
   })
 })

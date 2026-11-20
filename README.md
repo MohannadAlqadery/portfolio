@@ -20,8 +20,8 @@ v2), information architecture and delivery phases.
 - **Footer:** City watch: a night city seen from a SOC, in the page's own colour tokens (its sky
   is the page background). Buildings are hosts that get patched in waves, new CVEs ping in, an
   advisory ticker scrolls, packets run along rooftop cables and malicious ones are dropped at a
-  firewall, and a profiler checks passers-by's devices for missing updates and anomalies, then
-  marks them resolved. Colour appears only as severity. The light theme shows the same city by
+  firewall, a profiler checks passers-by's devices for missing updates and anomalies, and street
+  assets (ATM, public Wi-Fi, CCTV, EV chargers) and badge readers raise and resolve findings. Colour appears only as severity. The light theme shows the same city by
   day. Drawn in code on one canvas (`src/features/city-watch`); nothing reacts to the pointer.
 - **Ask terminal:** a scripted assistant (corner pill, or the backtick key) that answers from the
   site's own content. No AI and no network.

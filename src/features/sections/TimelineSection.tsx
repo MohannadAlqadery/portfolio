@@ -195,11 +195,11 @@ function Groundwork() {
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] md:items-end md:gap-12">
         <div>
           <p className="label text-fg-subtle">
-            Groundwork <span aria-hidden="true">·</span> {formatMonth(education.start)} →{' '}
+            Education <span aria-hidden="true">·</span> {formatMonth(education.start)} →{' '}
             {formatMonth(education.end)}
           </p>
           <h3 className="mt-4 font-display text-[clamp(2.25rem,5.5vw,4.25rem)] leading-[0.95] font-bold tracking-[-0.035em] text-balance text-fg">
-            Cybersecurity <em className="text-fg-subtle not-italic">and cloud.</em>
+            The <em className="text-fg-subtle not-italic">groundwork.</em>
           </h3>
         </div>
         <div className="text-sm leading-relaxed text-pretty text-fg-muted md:pb-2">

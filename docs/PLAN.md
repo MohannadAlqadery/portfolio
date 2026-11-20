@@ -66,7 +66,11 @@ v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided 
   and light is day. No name billboard, no pointer interaction and no build info. Dropped along the
   way: a signal field, an Open Peeps street, and a coloured neon district that clashed with the
   page.
-- **Groundwork:** the degree block under the timeline got a full-size header like the sections,
+- **Ground floors:** the footer's shop signs became watched street assets (ATM, FREE WI-FI, CCTV,
+  EV CHARGE, PHARMACY, PARKING, 24H) alternating with dark access-controlled fronts and badge
+  readers; every label, screen and light eases in and out.
+- **Groundwork:** the degree block under the timeline got a full-size header like the sections
+  ("The groundwork."),
   and coursework grew to eight courses (adding Penetration Testing, Cloud Security (AWS) and Risk
   Assessment).
 - **Green = Active only (after review):** the accent appears only on "Active" status; an e2e
