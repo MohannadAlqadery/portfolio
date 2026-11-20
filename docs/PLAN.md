@@ -59,10 +59,12 @@ v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided 
   as layout shift.
 - **Folders** open a case sheet in the page rather than a modal, so content stays indexable and
   no scroll lock is needed.
-- **Footer v2 (after review):** the Open Peeps crowd was replaced by a **signal field**: the name
-  as a canvas dot matrix with packets, a scan sweep and a cursor scanner lens, plus an "All systems
-  normal" status strip. Inspired by dot-matrix/particle wordmark and "machined" status footers.
-- **Green = live only (after review):** the accent now appears only on live status dots.
+- **Footer (after two reviews):** the walking crowd came back as a **street**: a generated
+  ink skyline (towers, water tank, dome and minaret, a crane) with birds, the crowd at eye level and
+  automatic detection tags. No pointer interaction and no build info. A canvas "signal field"
+  was tried in between and dropped: the owner wanted the footer to be about people and city life.
+- **Green = Active only (after review):** the accent appears only on "Active" status; an e2e
+  check scans each page for any other green.
 - **Large screens:** root size steps to 112.5 / 125 / 150% on big, tall monitors; layouts are
   checked across 22 viewports from 280 px phones to 4K.
 
