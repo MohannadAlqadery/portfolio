@@ -20,13 +20,24 @@ export function startSmoothScroll(): () => void {
     // Long, soft settle like the reference; still responsive to small wheel moves.
     lerp: 0.1,
     wheelMultiplier: 1,
-    // Pause while something locks page scroll (menus and dialogs set overflow: hidden).
-    autoToggle: true,
     // Let scrollable panels (command palette list, dialogs, code blocks) scroll themselves.
     allowNestedScroll: true,
     prevent: (node) => node.closest('[role="dialog"], [data-lenis-prevent]') !== null,
   })
   instance = lenis
+
+  // Pause while something locks page scroll: the mobile menu sets overflow: hidden on <html>, and
+  // Radix dialogs (command palette) mark <body> with data-scroll-locked. Lenis would otherwise
+  // keep scrolling the page behind them.
+  const { documentElement: root, body } = document
+  const syncLock = () => {
+    const locked = body.hasAttribute('data-scroll-locked') || root.style.overflow === 'hidden'
+    if (locked) lenis.stop()
+    else lenis.start()
+  }
+  const lockObserver = new MutationObserver(syncLock)
+  lockObserver.observe(root, { attributes: true, attributeFilter: ['style'] })
+  lockObserver.observe(body, { attributes: true, attributeFilter: ['data-scroll-locked', 'style'] })
 
   let frame = requestAnimationFrame(function raf(time) {
     lenis.raf(time)
@@ -34,6 +45,7 @@ export function startSmoothScroll(): () => void {
   })
 
   return () => {
+    lockObserver.disconnect()
     cancelAnimationFrame(frame)
     lenis.destroy()
     instance = null

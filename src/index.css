@@ -399,6 +399,14 @@
     scroll-behavior: auto;
   }
 
+  /*
+   * Menus and dialogs lock scrolling themselves (and compensate for the scrollbar). Lenis's own
+   * overflow: clip while stopped would reflow the page and shift the scroll position on close.
+   */
+  html.lenis.lenis-stopped:not(.lenis-autoToggle) {
+    overflow: visible;
+  }
+
   :root[data-theme='light'] {
     color-scheme: light;
   }
