@@ -139,3 +139,14 @@ describe('ContactSection', () => {
     expect(await screen.findByRole('button', { name: /Copied/ })).toBeInTheDocument()
   })
 })
+
+describe('timeline', () => {
+  it('runs newest first, starts with the current role and covers every case', async () => {
+    const { timeline } = await import('@/content/timeline')
+    const months = timeline.map((e) => e.at)
+    expect(months).toEqual([...months].sort().reverse())
+    expect(timeline[0]?.current).toBe(true)
+    for (const file of cases) expect(timeline.some((e) => e.id === file.id)).toBe(true)
+    expect(timeline.find((e) => e.kind === 'certification')?.title).toContain('SC-200')
+  })
+})

@@ -10,7 +10,7 @@ test.describe('home page', () => {
   }) => {
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Mohannad\s+Alqadery/)
-    for (const id of ['profile', 'cases', 'credentials', 'toolkit', 'education', 'contact']) {
+    for (const id of ['profile', 'cases', 'credentials', 'toolkit', 'timeline', 'contact']) {
       await expect(page.locator(`section#${id}`)).toBeAttached()
     }
     expect(consoleErrors).toEqual([])
@@ -20,7 +20,9 @@ test.describe('home page', () => {
     await page.goto('/')
     // Wait for the hero to settle; the open case sheet is part of the audit.
     await expect(page.getByRole('heading', { level: 2, name: /Hi, I’m/ })).toBeAttached()
-    await expect(page.getByRole('heading', { level: 3, name: 'SOC L1 Analyst' })).toBeAttached()
+    await expect(
+      page.locator('#cases').getByRole('heading', { level: 3, name: 'SOC L1 Analyst' }),
+    ).toBeAttached()
 
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
     expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([])
@@ -78,9 +80,11 @@ test.describe('home page', () => {
     await intern.click()
     await expect(intern).toHaveAttribute('aria-expanded', 'true')
     await expect(
-      page.getByRole('heading', { level: 3, name: 'Cybersecurity Intern' }),
+      page.locator('#cases').getByRole('heading', { level: 3, name: 'Cybersecurity Intern' }),
     ).toBeVisible()
-    await expect(page.getByRole('heading', { level: 3, name: 'SOC L1 Analyst' })).toHaveCount(0)
+    await expect(
+      page.locator('#cases').getByRole('heading', { level: 3, name: 'SOC L1 Analyst' }),
+    ).toHaveCount(0)
   })
 })
 

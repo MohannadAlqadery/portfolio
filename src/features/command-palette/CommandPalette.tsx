@@ -111,7 +111,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
             <Item
               key={section.id}
               value={`go ${section.label}`}
-              keywords={[section.id]}
+              keywords={[section.id, ...('keywords' in section ? section.keywords : [])]}
               icon={<Hash />}
               hint={pad(i + 1)}
               onSelect={() => run(() => goToSection(section.id))}
