@@ -18,8 +18,8 @@ test.describe('home page', () => {
 
   test('has no automatically detectable accessibility violations', async ({ page }) => {
     await page.goto('/')
-    // Show the finished console and every case file so the whole page is audited.
-    await expect(page.locator('[data-phase="results"]')).toBeAttached()
+    // Wait for the hero to settle, and open every case file so the whole page is audited.
+    await expect(page.getByRole('heading', { level: 2, name: /Hi, I’m/ })).toBeAttached()
     await page.getByRole('button', { name: 'Expand all' }).click()
 
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/cn'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost'
+export type ButtonVariant = 'primary' | 'solid' | 'secondary' | 'ghost'
 export type ButtonSize = 'sm' | 'md'
 
 const base =
@@ -8,6 +8,8 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary: 'bg-signal text-canvas hover:bg-signal-strong',
+  /** Inverted neutral (white on dark, black on light): the main call to action in v2. */
+  solid: 'bg-fg text-canvas hover:bg-fg/85',
   secondary: 'border border-line-strong text-fg hover:border-fg-subtle hover:bg-raised',
   ghost: 'text-fg-muted hover:bg-raised hover:text-fg',
 }
