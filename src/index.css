@@ -151,6 +151,18 @@
 
   --animate-blink: blink 1.6s ease-in-out infinite;
 
+  /* Scanner band sweeping down the hero monogram card. */
+  --animate-scan: scan 5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+
+  @keyframes scan {
+    from {
+      transform: translateY(-100%);
+    }
+    to {
+      transform: translateY(400%);
+    }
+  }
+
   @keyframes blink {
     50% {
       opacity: 0.25;

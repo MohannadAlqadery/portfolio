@@ -6,6 +6,27 @@ export const hero = {
     'I work the first line of a security operations centre: triaging alerts, separating signal from noise, and following suspicious activity across SIEM and endpoint telemetry until there is a clear answer.',
 } as const
 
+/** Copy for the v2 hero scene and the intro it turns into. Facts only, from the resume. */
+export const heroScene = {
+  /** Two display lines, framed by brackets. */
+  headline: ['Security', 'Analyst'],
+  tagline: '{{ /SOC & INCIDENT RESPONSE }}',
+  greeting: ['Hi, I’m', 'Mohannad.'],
+  role: ['SOC analyst', 'on the blue team.'],
+  current: { label: 'Currently at', org: 'REACH Digital', title: 'SOC L1 Analyst' },
+  /** Bold parts are the nouns a reader should catch when skimming. */
+  statement: [
+    { text: 'I triage ' },
+    { text: 'security alerts', strong: true },
+    { text: ' and follow ' },
+    { text: 'suspicious activity', strong: true },
+    { text: ' across SIEM and endpoint telemetry until there is a ' },
+    { text: 'clear answer', strong: true },
+    { text: '.' },
+  ],
+  cta: 'Read the case files',
+} as const
+
 /** The query typed in the hero console. Pre-tokenised so highlighting needs no parser. */
 export const heroQuery: QueryLine[] = [
   [{ kind: 'table', text: 'SecurityAnalysts' }],

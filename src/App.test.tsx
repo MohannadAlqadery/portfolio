@@ -48,7 +48,9 @@ describe('Site menu', () => {
 
     await user.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('navigation', { name: 'Sections' })).toBeVisible()
+    // The panel fades in; wait for the animation to finish.
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
+    await vi.waitFor(() => expect(nav).toBeVisible(), { timeout: 2000 })
 
     await user.keyboard('{Escape}')
     expect(toggle).toHaveAttribute('aria-expanded', 'false')

@@ -85,4 +85,44 @@ test.describe('open and close motion', () => {
     await page.getByRole('button', { name: 'Close menu' }).click()
     await expect(nav).toHaveCount(0)
   })
+
+  test('hero card travels and tilts into the intro as you scroll', async ({ page, isMobile }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    const card = page.locator('div:has(> span.sr-only:text("The initials MA"))').last()
+    const intro = page.getByRole('heading', { level: 2, name: /Hi, I’m/ })
+    const opacityOf = (el: typeof intro) =>
+      el.evaluate((node) =>
+        Number(getComputedStyle(node.parentElement?.parentElement ?? node).opacity),
+      )
+
+    const start = await card.boundingBox()
+    expect(await opacityOf(intro)).toBeLessThan(0.1)
+
+    // Halfway through the travel the card is turned in 3D.
+    const range = await page.evaluate(() => {
+      const scene = document.querySelector<HTMLElement>('section[aria-labelledby="hero-title"]')
+      return (scene?.offsetHeight ?? 0) - innerHeight
+    })
+    await page.evaluate((y) => window.scrollTo(0, y), Math.round(range * 0.3))
+    await expect
+      .poll(() => card.evaluate((el) => getComputedStyle(el.parentElement ?? el).transform))
+      .toMatch(/^matrix3d/)
+
+    // At the end it has grown into its intro spot and the intro copy is shown.
+    await page.evaluate((y) => window.scrollTo(0, y), range)
+    await expect.poll(() => opacityOf(intro)).toBeGreaterThan(0.95)
+    const end = await card.boundingBox()
+    expect(end?.width ?? 0).toBeGreaterThan((start?.width ?? 0) * (isMobile ? 1 : 1.1))
+  })
+
+  test('hero is a plain, unpinned layout with Reduce Motion', async ({ page }) => {
+    await page.goto('/')
+    const scene = page.locator('section[aria-labelledby="hero-title"]')
+    const height = (await scene.boundingBox())?.height ?? 0
+    // No 250svh scroll runway: just the hero screen plus the intro.
+    expect(height).toBeLessThan((page.viewportSize()?.height ?? 0) * 2.2)
+    await expect(page.getByRole('heading', { level: 2, name: /Hi, I’m/ })).toBeVisible()
+    await expect(page.getByText('The initials MA drawn in ASCII characters')).toBeAttached()
+  })
 })
