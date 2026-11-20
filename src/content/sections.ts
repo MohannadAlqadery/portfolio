@@ -4,7 +4,7 @@ export const sections = [
   { id: 'cases', label: 'Case files' },
   { id: 'credentials', label: 'Credentials' },
   { id: 'toolkit', label: 'Toolkit' },
-  { id: 'education', label: 'Education' },
+  { id: 'timeline', label: 'Timeline', keywords: ['education', 'experience', 'history', 'degree'] },
   { id: 'contact', label: 'Contact' },
 ] as const
 

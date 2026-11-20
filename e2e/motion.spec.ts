@@ -154,4 +154,26 @@ test.describe('open and close motion', () => {
     })
     await expect.poll(() => opacity(count - 1)).toBeGreaterThan(0.95)
   })
+
+  test('timeline trace draws itself as you scroll through it', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    const trace = page.locator('#timeline svg >> visible=true').locator('path').nth(1)
+    const drawn = () =>
+      trace.evaluate((el) => Number((el.getAttribute('stroke-dasharray') ?? '0').split(/[ ,]+/)[0]))
+
+    await page.locator('#timeline').evaluate((el) => {
+      window.scrollTo(0, el.getBoundingClientRect().top + scrollY - innerHeight)
+    })
+    await expect.poll(drawn).toBeLessThan(0.2)
+
+    await page
+      .locator('#timeline ol')
+      .last()
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        window.scrollTo(0, r.bottom + scrollY - innerHeight * 0.4)
+      })
+    await expect.poll(drawn).toBeGreaterThan(0.95)
+  })
 })

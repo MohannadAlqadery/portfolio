@@ -4,8 +4,8 @@ import { SITE_TITLE } from '@/features/notes/meta'
 import { CaseFilesSection } from '@/features/sections/CaseFilesSection'
 import { ContactSection } from '@/features/sections/ContactSection'
 import { CredentialsSection } from '@/features/sections/CredentialsSection'
-import { EducationSection } from '@/features/sections/EducationSection'
 import { ProfileSection } from '@/features/sections/ProfileSection'
+import { TimelineSection } from '@/features/sections/TimelineSection'
 import { ToolkitSection } from '@/features/sections/ToolkitSection'
 import { useDocumentMeta } from '@/hooks/useDocumentMeta'
 import { scrollToId } from '@/lib/scroll'
@@ -29,7 +29,7 @@ export function HomePage() {
       <CaseFilesSection />
       <CredentialsSection />
       <ToolkitSection />
-      <EducationSection />
+      <TimelineSection />
       <ContactSection />
     </>
   )
