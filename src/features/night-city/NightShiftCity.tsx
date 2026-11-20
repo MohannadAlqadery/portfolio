@@ -56,7 +56,7 @@ function readColors(): SceneColors {
     ]),
   ) as Record<Severity, string>
   return {
-    canvas: v('--color-canvas', '#0b0d0c'),
+    canvas: v('--color-canvas', '#0a0a0a'),
     fg: v('--color-fg', '#edefea'),
     muted: v('--color-fg-muted', '#a3aaa2'),
     subtle: v('--color-fg-subtle', '#818981'),
