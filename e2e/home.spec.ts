@@ -18,9 +18,9 @@ test.describe('home page', () => {
 
   test('has no automatically detectable accessibility violations', async ({ page }) => {
     await page.goto('/')
-    // Wait for the hero to settle, and open every case file so the whole page is audited.
+    // Wait for the hero to settle; the open case sheet is part of the audit.
     await expect(page.getByRole('heading', { level: 2, name: /Hi, I’m/ })).toBeAttached()
-    await page.getByRole('button', { name: 'Expand all' }).click()
+    await expect(page.getByRole('heading', { level: 3, name: 'SOC L1 Analyst' })).toBeAttached()
 
     const results = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze()
     expect(results.violations.map((v) => `${v.id}: ${v.help} (${v.nodes.length})`)).toEqual([])
@@ -56,6 +56,31 @@ test.describe('home page', () => {
       'href',
       'mailto:mohannadalqadery@gmail.com',
     )
+  })
+
+  test('case folders open into the case sheet, and papers lift on hover', async ({
+    page,
+    isMobile,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/#cases')
+    const intern = page.getByRole('button', { name: /Cybersecurity Intern/ })
+    await intern.scrollIntoViewIfNeeded()
+
+    if (!isMobile) {
+      // The light report page rises out of the folder on hover.
+      const paper = intern.locator('[aria-hidden="true"] > div').last()
+      const restY = (await paper.boundingBox())?.y ?? 0
+      await intern.hover()
+      await expect.poll(async () => (await paper.boundingBox())?.y ?? 0).toBeLessThan(restY - 5)
+    }
+
+    await intern.click()
+    await expect(intern).toHaveAttribute('aria-expanded', 'true')
+    await expect(
+      page.getByRole('heading', { level: 3, name: 'Cybersecurity Intern' }),
+    ).toBeVisible()
+    await expect(page.getByRole('heading', { level: 3, name: 'SOC L1 Analyst' })).toHaveCount(0)
   })
 })
 

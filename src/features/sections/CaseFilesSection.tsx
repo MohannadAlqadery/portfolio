@@ -1,185 +1,139 @@
-import { ChevronDown } from 'lucide-react'
-import { useId, useState } from 'react'
+import { AnimatePresence, m } from 'motion/react'
+import { useEffect, useId, useRef, useState, type MouseEvent } from 'react'
 import { Section } from '@/components/layout/Section'
-import { Chip } from '@/components/ui/Chip'
-import { StatusDot } from '@/components/ui/StatusDot'
-import { cases, type CaseFile } from '@/content/cases'
+import { cases } from '@/content/cases'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/cn'
-import { formatDuration, formatMonth, monthsBetween, toYearMonth } from '@/lib/dates'
+import { formatMonth, toYearMonth } from '@/lib/dates'
+import { navigate } from '@/lib/router'
+import { getSmoothScroll } from '@/lib/smooth-scroll'
+import { CaseSheet } from './case-files/CaseSheet'
+import { FolderCaption, FolderShell } from './case-files/CaseFolder'
 
-const pad = (n: number) => n.toString().padStart(2, '0')
+// Note files are only listed here (no content is loaded): the folder shows their names.
+const noteFiles = Object.keys(import.meta.glob('/src/content/notes/*.mdx')).map(
+  (path) => path.split('/').pop() ?? path,
+)
 
-function CaseRow({
-  file,
-  open,
-  onToggle,
-  currentMonth,
-}: {
-  file: CaseFile
-  open: boolean
-  onToggle: () => void
-  currentMonth: string
-}) {
-  const baseId = useId()
-  const buttonId = `${baseId}-button`
-  const panelId = `${baseId}-panel`
-  const active = file.status === 'active'
-  const end = file.end ?? currentMonth
-  const duration = formatDuration(monthsBetween(file.start, end))
-
-  return (
-    <li className="border-b border-line">
-      <h3>
-        <button
-          id={buttonId}
-          type="button"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={onToggle}
-          className="group grid w-full grid-cols-[1fr_auto] items-start gap-x-4 gap-y-3 py-6 text-left md:grid-cols-12 md:items-center md:gap-8"
-        >
-          {/* Phone order: [ID · chip | chevron] / title / dates. Desktop: DOM order across 12 cols. */}
-          <span className="order-1 flex flex-wrap items-center gap-3 md:order-none md:col-span-3">
-            <span className="label text-fg-subtle">{file.id}</span>
-            <Chip variant={active ? 'signal' : 'neutral'}>
-              {active ? <StatusDot pulse /> : null}
-              {active ? 'active' : 'closed'}
-            </Chip>
-          </span>
-
-          <span className="order-3 col-span-2 md:order-none md:col-span-6">
-            <span className="block font-display text-3xl leading-tight text-fg transition-colors group-hover:text-signal-strong md:text-4xl">
-              {file.title}
-            </span>
-            <span className="mt-1 block text-sm text-fg-muted">
-              {file.org} · {file.location}
-            </span>
-          </span>
-
-          <span className="order-2 flex items-center justify-end gap-4 md:order-none md:col-span-3">
-            <span className="hidden text-right md:block">
-              <span className="block label text-fg-muted">
-                {formatMonth(file.start)} → {file.end ? formatMonth(file.end) : 'now'}
-              </span>
-              <span className="block label text-fg-subtle">{duration}</span>
-            </span>
-            <span
-              aria-hidden="true"
-              className="grid size-8 shrink-0 place-items-center rounded-sm border border-line text-fg-subtle transition-colors group-hover:border-line-strong group-hover:text-fg"
-            >
-              <ChevronDown
-                className={cn('size-4 transition-transform duration-300', open && 'rotate-180')}
-              />
-            </span>
-          </span>
-
-          <span className="order-4 col-span-2 -mt-1 label text-fg-subtle md:hidden">
-            {formatMonth(file.start)} → {file.end ? formatMonth(file.end) : 'now'} · {duration}
-          </span>
-        </button>
-      </h3>
-
-      {/* grid-rows 0fr → 1fr animates height without measuring. `inert` keeps hidden content out of tab order. */}
-      <section
-        id={panelId}
-        aria-labelledby={buttonId}
-        inert={!open}
-        className={cn(
-          'grid transition-[grid-template-rows] duration-300 ease-out',
-          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="grid gap-8 pb-8 md:grid-cols-12">
-            <dl className="grid grid-cols-[7rem_1fr] content-start gap-y-2 label text-fg-subtle md:col-span-3 md:grid-cols-1 md:gap-y-1">
-              <dt>Classification</dt>
-              <dd className="text-fg-muted md:mb-3">{file.classification}</dd>
-              <dt>Status</dt>
-              <dd className="text-fg-muted">{active ? 'Ongoing' : 'Closed'}</dd>
-            </dl>
-
-            <div className="md:col-span-9">
-              <p className="text-lg text-fg">{file.summary}</p>
-              <ol className="mt-5 space-y-3">
-                {file.actions.map((action, i) => (
-                  <li key={action} className="grid grid-cols-[2rem_1fr] gap-2 text-fg-muted">
-                    <span className="pt-1 label text-signal">{pad(i + 1)}</span>
-                    <span className="leading-relaxed">{action}</span>
-                  </li>
-                ))}
-              </ol>
-              {file.note ? (
-                <p className="mt-6 border-l-2 border-sev-medium/60 pl-4 text-sm text-fg-muted">
-                  <span className="mr-2 label text-sev-medium">Note</span>
-                  {file.note}
-                </p>
-              ) : null}
-              <ul className="mt-6 flex flex-wrap gap-2" aria-label="Tags">
-                {file.tags.map((tag) => (
-                  <li key={tag}>
-                    <Chip>{tag}</Chip>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-    </li>
-  )
-}
+const folderClass =
+  'group/folder block w-full rounded-lg text-left outline-offset-4 focus-visible:outline-2'
 
 export function CaseFilesSection() {
   const now = useNow()
   const currentMonth = toYearMonth(now)
-  const [openIds, setOpenIds] = useState<ReadonlySet<string>>(
-    () => new Set(cases.filter((c) => c.status === 'active').map((c) => c.id)),
+  const sheetId = useId()
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const [openId, setOpenId] = useState<string | null>(
+    () => cases.find((c) => c.status === 'active')?.id ?? null,
   )
+  const [interacted, setInteracted] = useState(false)
+  const open = cases.find((c) => c.id === openId) ?? null
 
-  const toggle = (id: string) =>
-    setOpenIds((previous) => {
-      const next = new Set(previous)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  // After picking a folder, bring the sheet into view if it opened below the fold (phones).
+  useEffect(() => {
+    if (!interacted || !openId) return
+    const sheet = sheetRef.current
+    if (!sheet || sheet.getBoundingClientRect().top < window.innerHeight * 0.7) return
+    const lenis = getSmoothScroll()
+    if (lenis) lenis.scrollTo(sheet, { offset: -96 })
+    else sheet.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [openId, interacted])
 
-  const allOpen = openIds.size === cases.length
+  const select = (id: string) => {
+    setInteracted(true)
+    setOpenId((current) => (current === id ? null : id))
+  }
+
+  const openNotes = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault()
+    navigate('/notes')
+  }
 
   return (
     <Section
       id="cases"
       title={
         <>
-          Case <em className="text-fg-muted">files</em>
+          Case <em>files.</em>
         </>
       }
-      intro="Each role logged like an incident: what it was, what I handled, and how it closed."
+      intro="Each role logged like an incident: what it was, what I handled, and how it closed. Open a folder to read the case."
     >
-      <div className="mb-2 flex items-center justify-between label text-fg-subtle">
-        <span>
-          {cases.length} records · {cases.filter((c) => c.status === 'active').length} active
-        </span>
-        <button
-          type="button"
-          onClick={() => setOpenIds(allOpen ? new Set() : new Set(cases.map((c) => c.id)))}
-          className="transition-colors hover:text-fg"
-        >
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
+      <ul className="grid grid-cols-2 gap-x-5 gap-y-10 lg:grid-cols-4 lg:gap-x-8">
+        {cases.map((file) => {
+          const isOpen = openId === file.id
+          return (
+            <li key={file.id}>
+              <button
+                type="button"
+                onClick={() => select(file.id)}
+                aria-expanded={isOpen}
+                aria-controls={sheetId}
+                data-open={isOpen}
+                className={folderClass}
+              >
+                <FolderShell
+                  title={file.shortTitle ?? file.title}
+                  open={isOpen}
+                  icon="open"
+                  papers={{
+                    heading: `${file.id} · report`,
+                    lines: file.excerpt,
+                    stamp: file.status,
+                  }}
+                />
+              </button>
+              <FolderCaption>
+                <span className="truncate">
+                  {file.org.replace(/ LLC$/, '')} · {file.classification}
+                </span>
+                <span className={cn('shrink-0', file.status === 'active' && 'text-signal')}>
+                  {file.end ? formatMonth(file.end).slice(-4) : 'now'}
+                </span>
+              </FolderCaption>
+            </li>
+          )
+        })}
+        <li>
+          <a href="/notes" onClick={openNotes} className={folderClass}>
+            <FolderShell
+              title="Field notes"
+              icon="link"
+              papers={{ heading: 'notes · write-ups', lines: noteFiles, stamp: 'public' }}
+            />
+          </a>
+          <FolderCaption>
+            <span>{noteFiles.length} write-ups</span>
+            <span className="shrink-0">read ↗</span>
+          </FolderCaption>
+        </li>
+      </ul>
+
+      <div ref={sheetRef} id={sheetId} className="mt-12 scroll-mt-24 md:mt-16">
+        <AnimatePresence mode="wait" initial={false}>
+          {open ? (
+            <m.div
+              key={open.id}
+              initial={{ opacity: 0, y: 18, filter: 'blur(6px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(4px)', transition: { duration: 0.18 } }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <CaseSheet file={open} currentMonth={currentMonth} />
+            </m.div>
+          ) : (
+            <m.p
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="rounded-xl border border-dashed border-line-strong p-8 text-center label text-fg-subtle"
+            >
+              No case open. Pick a folder to read it.
+            </m.p>
+          )}
+        </AnimatePresence>
       </div>
-      <ol className="border-t border-line">
-        {cases.map((file) => (
-          <CaseRow
-            key={file.id}
-            file={file}
-            open={openIds.has(file.id)}
-            onToggle={() => toggle(file.id)}
-            currentMonth={currentMonth}
-          />
-        ))}
-      </ol>
     </Section>
   )
 }
