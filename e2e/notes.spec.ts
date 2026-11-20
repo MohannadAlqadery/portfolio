@@ -108,70 +108,40 @@ test.describe('field notes', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'The method' })).toBeInViewport()
   })
 
-  test('phone header is fixed to the top and slides away while reading', async ({
-    page,
-    isMobile,
-  }) => {
-    test.skip(!isMobile, 'phones and tablets only')
+  test('the pill nav floats at the top and stays put while reading', async ({ page }) => {
     await page.goto('/notes/esoc')
-    const header = page.getByRole('banner')
-    const headerTop = async () => (await header.boundingBox())?.y ?? NaN
+    const pill = page.getByRole('banner').locator('> div')
+    const pillTop = async () => (await pill.boundingBox())?.y ?? NaN
 
-    // Fixed with a solid background at the top edge: what Safari 26 paints its toolbar from.
-    await expect(header).toHaveCSS('position', 'fixed')
-    await expect(header).toHaveCSS('background-color', 'rgb(10, 10, 10)')
-    expect(await headerTop()).toBe(0)
+    await expect(page.getByRole('banner')).toHaveCSS('position', 'fixed')
+    const top = await pillTop()
+    expect(top).toBeGreaterThan(0)
     // Content starts below it rather than underneath it.
     const h1 = (await page.getByRole('heading', { level: 1 }).boundingBox())?.y ?? 0
-    expect(h1).toBeGreaterThan((await header.boundingBox())?.height ?? Infinity)
+    const pillBottom = top + ((await pill.boundingBox())?.height ?? Infinity)
+    expect(h1).toBeGreaterThan(pillBottom)
 
-    await page.emulateMedia({ reducedMotion: 'no-preference' })
-    const height = (await header.boundingBox())?.height ?? 0
-    const scrollBy = async (dy: number) => {
-      // Instant, and read back within a few frames: the header settles ~140ms after scrolling stops.
-      await page.evaluate((d) => window.scrollBy({ top: d, behavior: 'instant' }), dy)
-      await page.waitForTimeout(40)
-    }
-
-    // Quick return: scrolling down takes it away with the page...
-    await scrollBy(1000)
-    await expect.poll(headerTop).toBeCloseTo(-height, 0)
-    // ...and the reading progress is its own line at the top, not part of the header.
+    await page.evaluate(() => window.scrollBy({ top: 1000, behavior: 'instant' }))
+    expect(await pillTop()).toBe(top)
+    // The reading progress is its own line at the very top edge.
     expect((await page.getByTestId('reading-progress').boundingBox())?.y).toBe(0)
-
-    // Scrolling back up brings it back in step with the page; when scrolling stops part-way it
-    // settles: a small nudge leaves it mostly hidden, so it hides again...
-    await scrollBy(-20)
-    await expect.poll(headerTop, { timeout: 2000 }).toBeCloseTo(-height, 0)
-    // ...a longer scroll up leaves it mostly shown, so it comes all the way back.
-    await scrollBy(-(height - 10))
-    await expect.poll(headerTop, { timeout: 2000 }).toBe(0)
-    await expect(page.getByTestId('reading-progress')).toBeInViewport()
-
-    // Back at the very top it's always fully shown.
-    await scrollBy(600)
-    await scrollBy(-100000)
-    await expect.poll(headerTop, { timeout: 2000 }).toBe(0)
   })
 
-  test('phone menu is a full-screen sheet under the header', async ({ page, isMobile }) => {
-    test.skip(!isMobile, 'phones and tablets only')
+  test('the menu drops out of the pill without locking the page', async ({ page }) => {
     await page.goto('/notes/esoc')
     await page.mouse.wheel(0, 800)
-    // The header slid away while scrolling down; scrolling up brings the menu button back.
-    await page.mouse.wheel(0, -200)
     await page.getByRole('button', { name: 'Open menu' }).click()
 
-    const sheet = page.locator('[id]:has(> * > nav[aria-label="Sections"])')
-    const viewport = page.viewportSize()
-    const box = await sheet.boundingBox()
-    expect(box).toMatchObject({ x: 0, y: 0, width: viewport?.width, height: viewport?.height })
-    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible()
-    // The page underneath can't scroll while it's open.
-    await expect(page.locator('html')).toHaveCSS('overflow', 'hidden')
+    const nav = page.getByRole('navigation', { name: 'Sections' })
+    await expect(nav).toBeVisible()
+    const pill = await page.getByRole('banner').locator('> div > div').first().boundingBox()
+    const panel = await page.locator('[id]:has(> nav[aria-label="Sections"])').boundingBox()
+    expect(panel?.y ?? 0).toBeGreaterThan((pill?.y ?? 0) + (pill?.height ?? 0))
+    await expect(page.locator('html')).not.toHaveCSS('overflow', 'hidden')
 
     await page.keyboard.press('Escape')
-    await expect(page.locator('html')).not.toHaveCSS('overflow', 'hidden')
+    await expect(nav).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused()
   })
 
   test('reading progress only shows on note pages', async ({ page }) => {
@@ -182,23 +152,13 @@ test.describe('field notes', () => {
     await expect(page.getByTestId('reading-progress')).toHaveCount(1)
   })
 
-  test('section links on a note page go back to the homepage section', async ({
-    page,
-    isMobile,
-  }) => {
+  test('section links on a note page go back to the homepage section', async ({ page }) => {
     await page.goto(NOTE)
-    if (isMobile) {
-      await page.getByRole('button', { name: 'Open menu' }).click()
-      await page
-        .getByRole('navigation', { name: 'Sections' })
-        .getByRole('link', { name: /Case files/ })
-        .click()
-    } else {
-      await page
-        .getByRole('navigation', { name: 'Primary' })
-        .getByRole('link', { name: /Case files/ })
-        .click()
-    }
+    await page.getByRole('button', { name: 'Open menu' }).click()
+    await page
+      .getByRole('navigation', { name: 'Sections' })
+      .getByRole('link', { name: /Case files/ })
+      .click()
     await expect(page).toHaveURL(/\/#cases$/)
     await expect(page.locator('#cases')).toBeInViewport()
   })

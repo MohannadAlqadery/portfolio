@@ -1,7 +1,7 @@
 import { expect, test } from './fixtures.ts'
 
 /**
- * Open/close motion for the command palette and the phone menu. The suite runs with reduced
+ * Open/close motion for the command palette and the pill menu. The suite runs with reduced
  * motion by default; these tests opt back in to check the animations exist, and that the
  * reduced-motion path skips them.
  */
@@ -28,7 +28,7 @@ test.describe('open and close motion', () => {
     await expect(dialog).toHaveCSS('animation-name', 'panel-in')
   })
 
-  test('the nav bar does not shift when Ctrl K or the menu locks scrolling', async ({
+  test('the pill nav does not shift when Ctrl K locks scrolling', async ({
     playwright,
     baseURL,
     isMobile,
@@ -53,20 +53,6 @@ test.describe('open and close motion', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog', { name: 'Command palette' })).toHaveCount(0)
     expect(await logoX()).toBe(before)
-
-    // A narrow desktop window uses the menu, which locks scrolling too.
-    await page.setViewportSize({ width: 1024, height: 800 })
-    const menuX = () =>
-      page
-        .locator('button[aria-controls]')
-        .first()
-        .evaluate((el) => el.getBoundingClientRect().x)
-    const closed = await menuX()
-    await page.getByRole('button', { name: 'Open menu' }).click()
-    await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-    expect(await menuX()).toBe(closed)
-    await page.getByRole('button', { name: 'Close menu' }).click()
-    expect(await menuX()).toBe(closed)
     await browser.close()
   })
 
@@ -79,33 +65,24 @@ test.describe('open and close motion', () => {
     await expect(dialog).toHaveCSS('animation-duration', /^0\.00001s|^1e-05s|^0s/)
   })
 
-  test('phone menu fades in with its links sliding up, and back out', async ({
-    page,
-    isMobile,
-  }) => {
-    test.skip(!isMobile, 'phones and tablets only')
+  test('pill menu drops in, staggers its links, and leaves', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' })
     await page.goto('/')
-    const sheet = page.locator('[id]:has(> * > nav[aria-label="Sections"])')
-
-    // Closed: mounted (so it can animate) but invisible and inert.
-    await expect(sheet).toBeHidden()
-    await expect(sheet).toHaveAttribute('inert', '')
+    const nav = page.getByRole('navigation', { name: 'Sections' })
+    // Closed: not rendered at all.
+    await expect(nav).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Open menu' }).click()
-    await expect(sheet).toBeVisible()
-    await expect(sheet).not.toHaveAttribute('inert')
-    await expect(sheet).toHaveCSS('transition-property', /opacity/)
-    // Links follow one after another.
-    const items = sheet.getByRole('listitem')
-    const delays = await items.evaluateAll((els) =>
-      els.map((el) => getComputedStyle(el).transitionDelay),
-    )
-    expect(new Set(delays).size).toBe(delays.length)
-    await expect(page.getByRole('navigation', { name: 'Sections' })).toBeVisible()
+    const panel = page.locator('[id]:has(> nav[aria-label="Sections"])')
+    // Mid-animation the panel is still fading and blurred in...
+    await expect
+      .poll(() => panel.evaluate((el) => Number(getComputedStyle(el).opacity)))
+      .toBeLessThan(1)
+    // ...and settles fully visible, focus on the first link.
+    await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+    await expect(nav.getByRole('link').first()).toBeFocused()
 
     await page.getByRole('button', { name: 'Close menu' }).click()
-    await expect(sheet).toBeHidden()
-    await expect(sheet).toHaveAttribute('inert', '')
+    await expect(nav).toHaveCount(0)
   })
 })

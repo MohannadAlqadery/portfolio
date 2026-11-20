@@ -14,10 +14,12 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Mohannad Alqadery')
   })
 
-  it('lists every section in the primary nav and renders each section landmark', () => {
+  it('lists every section in the menu and renders each section landmark', async () => {
+    const user = userEvent.setup()
     render(<App />)
 
-    const nav = screen.getByRole('navigation', { name: 'Primary' })
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
+    const nav = screen.getByRole('navigation', { name: 'Sections' })
     for (const section of sections) {
       expect(within(nav).getByRole('link', { name: new RegExp(section.label) })).toHaveAttribute(
         'href',
@@ -36,7 +38,7 @@ describe('App shell', () => {
   })
 })
 
-describe('Mobile menu', () => {
+describe('Site menu', () => {
   it('opens and closes with Escape, returning focus to the toggle', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -51,6 +53,29 @@ describe('Mobile menu', () => {
     await user.keyboard('{Escape}')
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(toggle).toHaveFocus()
+  })
+
+  it('closes when clicking outside it', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    const toggle = screen.getByRole('button', { name: 'Open menu' })
+    await user.click(toggle)
+    await user.click(screen.getByRole('main'))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+})
+
+describe('Theme toggle', () => {
+  it('switches between dark and light and labels the next theme', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Switch to light theme' }))
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    await user.click(await screen.findByRole('button', { name: 'Switch to dark theme' }))
+    expect(document.documentElement.dataset.theme).toBe('dark')
   })
 })
 
@@ -71,10 +96,11 @@ describe('Command palette', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens from the header button', async () => {
+  it('opens from the menu', async () => {
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: 'Open menu' }))
     await user.click(screen.getByRole('button', { name: /command palette$/i }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
   })
