@@ -5,6 +5,7 @@ import { sections } from '@/content/sections'
 import { site } from '@/content/site'
 import { useModKey } from '@/hooks/useModKey'
 import { cn } from '@/lib/cn'
+import { preloadRoute } from '@/lib/route-modules'
 import { LocalClock } from './LocalClock'
 
 type NavMenuProps = {
@@ -61,6 +62,8 @@ export function NavMenu({
 
   useEffect(() => {
     firstLinkRef.current?.focus({ preventScroll: true })
+    // The menu links to the notes: start loading them now, so picking one switches smoothly.
+    void preloadRoute('/notes')
   }, [])
 
   return (
@@ -85,9 +88,7 @@ export function NavMenu({
                   aria-current={active ? 'location' : undefined}
                   className={linkClass}
                 >
-                  <span
-                    className={cn('w-5 shrink-0 label', active ? 'text-signal' : 'text-fg-subtle')}
-                  >
+                  <span className={cn('w-5 shrink-0 label', active ? 'text-fg' : 'text-fg-subtle')}>
                     {pad(i + 1)}
                   </span>
                   <span
@@ -110,7 +111,7 @@ export function NavMenu({
               className={linkClass}
             >
               <span
-                className={cn('w-5 shrink-0 label', notesActive ? 'text-signal' : 'text-fg-subtle')}
+                className={cn('w-5 shrink-0 label', notesActive ? 'text-fg' : 'text-fg-subtle')}
               >
                 ✎
               </span>

@@ -18,7 +18,8 @@ type StatusDotProps = {
   className?: string
 }
 
-export function StatusDot({ tone = 'signal', pulse = false, label, className }: StatusDotProps) {
+/** Neutral by default; `tone="signal"` (green) is reserved for things that are Active. */
+export function StatusDot({ tone = 'subtle', pulse = false, label, className }: StatusDotProps) {
   return (
     <span className={cn('inline-flex items-center', toneClasses[tone], className)}>
       <span

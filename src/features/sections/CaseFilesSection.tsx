@@ -5,6 +5,7 @@ import { cases } from '@/content/cases'
 import { useNow } from '@/hooks/useNow'
 import { cn } from '@/lib/cn'
 import { formatMonth, toYearMonth } from '@/lib/dates'
+import { preloadRoute } from '@/lib/route-modules'
 import { navigate } from '@/lib/router'
 import { getSmoothScroll } from '@/lib/smooth-scroll'
 import { CaseSheet } from './case-files/CaseSheet'
@@ -59,7 +60,7 @@ export function CaseFilesSection() {
       }
       intro="Each role logged like an incident: what it was, what I handled, and how it closed. Open a folder to read the case."
     >
-      <ul className="grid grid-cols-2 gap-x-5 gap-y-10 lg:grid-cols-4 lg:gap-x-8">
+      <ul className="grid grid-cols-1 gap-x-5 gap-y-10 min-[22.5rem]:grid-cols-2 lg:grid-cols-4 lg:gap-x-8">
         {cases.map((file) => {
           const isOpen = openId === file.id
           return (
@@ -84,10 +85,10 @@ export function CaseFilesSection() {
                 />
               </button>
               <FolderCaption>
-                <span className="truncate">
+                <span className="min-w-0">
                   {file.org.replace(/ LLC$/, '')} · {file.classification}
                 </span>
-                <span className={cn('shrink-0', file.status === 'active' && 'text-signal')}>
+                <span className={cn('shrink-0', file.status === 'active' && 'text-fg')}>
                   {file.end ? formatMonth(file.end).slice(-4) : 'now'}
                 </span>
               </FolderCaption>
@@ -95,7 +96,13 @@ export function CaseFilesSection() {
           )
         })}
         <li>
-          <a href="/notes" onClick={openNotes} className={folderClass}>
+          <a
+            href="/notes"
+            onClick={openNotes}
+            onPointerEnter={() => void preloadRoute('/notes')}
+            onFocus={() => void preloadRoute('/notes')}
+            className={folderClass}
+          >
             <FolderShell
               title="Field notes"
               icon="link"

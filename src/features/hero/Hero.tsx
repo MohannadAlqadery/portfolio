@@ -3,7 +3,6 @@ import {
   m,
   useMotionValue,
   useMotionValueEvent,
-  useScroll,
   useTransform,
   type MotionValue,
 } from 'motion/react'
@@ -14,6 +13,7 @@ import { heroScene } from '@/content/hero'
 import { site } from '@/content/site'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useScrollProgress } from '@/hooks/useScrollProgress'
 import { cn } from '@/lib/cn'
 import { getSmoothScroll } from '@/lib/smooth-scroll'
 import { scrollToId } from '@/lib/scroll'
@@ -266,10 +266,9 @@ function AnimatedHero() {
   const heroAnchorRef = useRef<HTMLDivElement>(null)
   const introAnchorRef = useRef<HTMLDivElement>(null)
 
-  const { scrollYProgress: progress } = useScroll({
-    target: sceneRef,
-    offset: ['start start', 'end end'],
-  })
+  // Pinned scene: 0 when its top reaches the top of the viewport, 1 when its bottom reaches the
+  // bottom. Frozen while a dialog locks the page (see useScrollProgress).
+  const progress = useScrollProgress(sceneRef, { start: 0, end: 1 })
   const { boxes, version, size } = useAnchors(frameRef, heroAnchorRef, introAnchorRef)
   const card = useCardMotion(progress, boxes, version)
 

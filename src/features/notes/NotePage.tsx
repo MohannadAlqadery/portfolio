@@ -25,7 +25,7 @@ function NeighbourLink({ note, direction }: { note: Note; direction: 'previous' 
         {isNext ? 'Next' : 'Previous'}
         {isNext ? <ArrowRight aria-hidden="true" className="size-3" /> : null}
       </span>
-      <span className="font-display text-xl leading-snug text-fg transition-colors group-hover:text-signal-strong">
+      <span className="font-display text-xl leading-snug text-fg transition-colors group-hover:text-fg-muted">
         {note.title}
       </span>
     </Link>
@@ -63,7 +63,7 @@ export default function NotePage({ slug }: { slug: string }) {
               {note.cert ? (
                 <>
                   <span aria-hidden="true"> · </span>
-                  <span className="text-signal">{note.cert}</span>
+                  <span className="text-fg-muted">{note.cert}</span>
                 </>
               ) : null}
             </p>

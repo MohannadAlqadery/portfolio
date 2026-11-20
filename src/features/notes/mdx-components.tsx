@@ -3,7 +3,7 @@ import { Link } from '@/components/ui/Link'
 import { CodeBlock, Heading, Takeaways } from './NoteElements'
 
 const linkClass =
-  'text-fg underline decoration-line-strong underline-offset-4 transition-colors hover:text-signal hover:decoration-signal'
+  'text-fg underline decoration-line-strong underline-offset-4 transition-colors hover:text-fg-muted hover:decoration-fg'
 
 /** Element mapping for note bodies. Styling lives here so MDX files stay plain Markdown. */
 export const mdxComponents: MDXComponents = {
@@ -35,11 +35,11 @@ export const mdxComponents: MDXComponents = {
   },
   strong: (props) => <strong className="font-medium text-fg" {...props} />,
   ul: (props) => (
-    <ul className="my-5 list-disc space-y-2 pl-5 text-fg-muted marker:text-signal" {...props} />
+    <ul className="my-5 list-disc space-y-2 pl-5 text-fg-muted marker:text-fg-subtle" {...props} />
   ),
   ol: (props) => (
     <ol
-      className="my-5 list-decimal space-y-2 pl-6 text-fg-muted marker:font-mono marker:text-xs marker:text-signal"
+      className="my-5 list-decimal space-y-2 pl-6 text-fg-muted marker:font-mono marker:text-xs marker:text-fg-subtle"
       {...props}
     />
   ),

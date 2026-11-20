@@ -42,6 +42,7 @@ export function AskTerminal() {
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-keyshortcuts="`"
+        data-vt="ask"
         className={cn(
           'fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-40 inline-flex h-9 items-center gap-2 rounded-full border px-3.5 font-mono text-xs shadow-lg shadow-black/30 transition-colors',
           open

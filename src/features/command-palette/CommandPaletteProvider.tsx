@@ -1,8 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CommandPaletteContext } from './context'
 
-// The palette (and cmdk) only load the first time someone opens it.
-const CommandPalette = lazy(() => import('./CommandPalette'))
+// The palette (and cmdk) are a separate chunk: fetched when the browser is idle after load, so
+// the first Ctrl K opens instantly without weighing on the initial page load.
+const loadPalette = () => import('./CommandPalette')
+const CommandPalette = lazy(loadPalette)
 
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
@@ -17,6 +19,12 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const setOpen = useCallback((next: boolean) => {
     if (next) setHasOpened(true)
     setOpenState(next)
+  }, [])
+
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 2000))
+    const handle = idle(() => void loadPalette())
+    return () => (window.cancelIdleCallback ?? window.clearTimeout)(handle)
   }, [])
 
   useEffect(() => {

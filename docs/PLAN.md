@@ -14,14 +14,14 @@ and transitions and add a security layer on top; we copy none of its assets or c
 
 ### Decisions
 
-| Topic     | Decision                                                                                                                                                       |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Direction | **Case File Noir**: dark monochrome, light/dark toggle, one accent, cyber layer through motion                                                                 |
-| Accent    | Signal green `#7BD389`, only for status / live states; severity colours stay semantic-only                                                                     |
-| Footer    | **Traffic crowd**: walking line-art crowd (CC0 Open Peeps), giant `MOHANNAD.` watermark, detection boxes lock onto people, "Finally, some traffic on my site." |
-| Assistant | **Scripted terminal** panel (no backend, no API key, no prompt-injection surface)                                                                              |
-| Portrait  | None. The hero card is an **ASCII monogram** (`MA` in glyphs), no photo of Mohannad on the site                                                                |
-| Contact   | Unchanged: obfuscated email + LinkedIn; the form only builds a `mailto:` draft                                                                                 |
+| Topic     | Decision                                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Direction | **Case File Noir**: dark monochrome, light/dark toggle, one accent, cyber layer through motion                          |
+| Accent    | Signal green `#7BD389`, only for status / live states; severity colours stay semantic-only                              |
+| Footer    | **City watch**: a night city seen from a SOC: patches, CVEs, packets and a profiler on passers-by, in the page's tokens |
+| Assistant | **Scripted terminal** panel (no backend, no API key, no prompt-injection surface)                                       |
+| Portrait  | None. The hero card is an **ASCII monogram** (`MA` in glyphs), no photo of Mohannad on the site                         |
+| Contact   | Unchanged: obfuscated email + LinkedIn; the form only builds a `mailto:` draft                                          |
 
 ### Reference → our version
 
@@ -46,6 +46,37 @@ and transitions and add a security layer on top; we copy none of its assets or c
   motion), CSS scroll-driven animations where they're enough. Everything honours reduced motion.
 - **Theme:** chosen theme saved in `localStorage`; `public/theme-init.js` applies it before first
   paint (an external file, so the CSP stays `script-src 'self'`).
+
+### Status
+
+v2.1 to v2.10 shipped (PRs #16 to #25). Changes from the original plan, decided while building:
+
+- **Hero card:** an ASCII monogram instead of a portrait (owner's choice).
+- **Education** became a **Timeline** section (`#timeline`) that also carries roles and
+  certifications; the degree and coursework sit under it.
+- **Footer reveal:** a scroll-timeline "rise" instead of a sticky curtain. The curtain kept the
+  footer in the viewport from the start, which loaded the crowd early and counted its font swap
+  as layout shift.
+- **Folders** open a case sheet in the page rather than a modal, so content stays indexable and
+  no scroll lock is needed.
+- **Footer (after four reviews):** **City watch**, a cyberpunk-inspired night city that is
+  about security work: hosts patched in waves, CVE alerts, an advisory ticker, packets dropped at
+  a firewall, and a profiler that flags passers-by's devices and then resolves them. It uses the
+  page's own tokens (monochrome, severity colours only), so it matches both themes; dark is night
+  and light is day. No name billboard, no pointer interaction and no build info. Dropped along the
+  way: a signal field, an Open Peeps street, and a coloured neon district that clashed with the
+  page.
+- **Ground floors:** the footer's shop signs became watched street assets (ATM, FREE WI-FI, CCTV,
+  EV CHARGE, PHARMACY, PARKING, 24H) alternating with dark access-controlled fronts and badge
+  readers; every label, screen and light eases in and out.
+- **Groundwork:** the degree block under the timeline got a full-size header like the sections
+  ("The groundwork."),
+  and coursework grew to eight courses (adding Penetration Testing, Cloud Security (AWS) and Risk
+  Assessment).
+- **Green = Active only (after review):** the accent appears only on "Active" status; an e2e
+  check scans each page for any other green.
+- **Large screens:** root size steps to 112.5 / 125 / 150% on big, tall monitors; layouts are
+  checked across 22 viewports from 280 px phones to 4K.
 
 ### Phases (one branch + PR each)
 

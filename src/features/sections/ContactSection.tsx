@@ -175,7 +175,7 @@ function DraftForm() {
               />
               <span
                 className={cn(
-                  'inline-flex h-8 items-center rounded-sm border px-3 text-[0.8125rem] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-signal',
+                  'inline-flex h-8 items-center rounded-sm border px-3 text-[0.8125rem] transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fg',
                   topic === option
                     ? 'border-fg bg-fg text-canvas'
                     : 'border-line-strong text-fg-muted hover:border-fg-subtle hover:text-fg',

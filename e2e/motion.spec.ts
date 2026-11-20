@@ -17,10 +17,19 @@ test.describe('open and close motion', () => {
     await expect(dialog).toHaveCSS('animation-name', 'panel-in')
     await expect(dialog.getByRole('combobox')).toBeFocused()
 
-    // Closing plays the exit animation before the dialog is removed.
-    await page.keyboard.press('Escape')
-    await expect(dialog).toHaveAttribute('data-state', 'closed')
-    await expect(dialog).toHaveCSS('animation-name', 'panel-out')
+    // Closing plays the exit animation before the dialog is removed. The exit lasts ~160 ms, so
+    // read it inside the page on the next frame rather than racing it from the test runner.
+    const closing = await page.evaluate(async () => {
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      )
+      await new Promise((r) => requestAnimationFrame(r))
+      const el = document.querySelector('[role="dialog"][aria-label="Command palette"]')
+      return el
+        ? { state: el.getAttribute('data-state'), anim: getComputedStyle(el).animationName }
+        : null
+    })
+    expect(closing).toEqual({ state: 'closed', anim: 'panel-out' })
     await expect(dialog).toHaveCount(0)
 
     // It opens again just as smoothly.
@@ -76,12 +85,17 @@ test.describe('open and close motion', () => {
     // Closed: not rendered at all.
     await expect(nav).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Open menu' }).click()
+    // Open from inside the page and read the panel's opacity on the very next frame: it starts
+    // faded (and blurred) in, whatever the machine's speed...
+    const firstFrame = await page.evaluate(async () => {
+      document.querySelector<HTMLButtonElement>('button[aria-expanded]')?.click()
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const panel = document.querySelector('[id]:has(> nav[aria-label="Sections"])')
+      return panel ? Number(getComputedStyle(panel).opacity) : null
+    })
+    expect(firstFrame).not.toBeNull()
+    expect(firstFrame).toBeLessThan(1)
     const panel = page.locator('[id]:has(> nav[aria-label="Sections"])')
-    // Mid-animation the panel is still fading and blurred in...
-    await expect
-      .poll(() => panel.evaluate((el) => Number(getComputedStyle(el).opacity)))
-      .toBeLessThan(1)
     // ...and settles fully visible, focus on the first link.
     await expect.poll(() => panel.evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
     await expect(nav.getByRole('link').first()).toBeFocused()

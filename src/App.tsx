@@ -3,7 +3,8 @@ import { Layout } from '@/components/layout/Layout'
 import { MotionProvider } from '@/components/motion/MotionProvider'
 import { CommandPaletteProvider } from '@/features/command-palette/CommandPaletteProvider'
 import { useHash } from '@/hooks/useHash'
-import { matchRoute, usePathname } from '@/lib/router'
+import { preloadRoute, routeComponent } from '@/lib/route-modules'
+import { matchRoute, setRoutePreloader, usePathname } from '@/lib/router'
 import { trackScrollLockGap } from '@/lib/scrollbar'
 import { startSmoothScroll } from '@/lib/smooth-scroll'
 import { HomePage } from '@/pages/HomePage'
@@ -21,15 +22,21 @@ export type RoutePages = {
   NotFoundPage: ComponentType
 }
 
-// In the browser, notes and 404 load as separate chunks so the homepage bundle doesn't grow.
+// In the browser, notes load as separate chunks so the homepage bundle doesn't grow; the router
+// preloads them before switching pages (see route-modules.ts), so transitions never show a gap.
 // The pre-renderer passes the same components eagerly, inside the same Suspense boundary, so the
 // server HTML and the client tree match and can be hydrated without a flash.
 const lazyPages: RoutePages = {
-  NotesIndexPage: lazy(() => import('@/features/notes/NotesIndexPage')),
-  NotePage: lazy(() => import('@/features/notes/NotePage')),
+  get NotesIndexPage() {
+    return routeComponent.notes
+  },
+  get NotePage() {
+    return routeComponent.note
+  },
   // Tiny, and also used by NotePage for unknown slugs, so it stays in the main bundle.
   NotFoundPage,
 }
+setRoutePreloader(preloadRoute)
 
 function RouteView({ pathname, pages }: { pathname: string; pages: RoutePages }) {
   const route = matchRoute(pathname)

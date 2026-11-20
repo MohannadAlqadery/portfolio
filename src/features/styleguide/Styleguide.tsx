@@ -221,7 +221,7 @@ export default function Styleguide() {
           </Specimen>
           <Specimen label="Buttons">
             <div className="flex flex-wrap items-center gap-3">
-              <Button variant="primary">Open a channel</Button>
+              <Button variant="solid">Open a channel</Button>
               <Button>View case files</Button>
               <Button variant="ghost">Skip</Button>
               <Button size="sm">Small</Button>

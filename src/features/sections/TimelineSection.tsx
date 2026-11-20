@@ -1,4 +1,4 @@
-import { m, useScroll, useTransform, type MotionValue } from 'motion/react'
+import { m, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
 import { Section } from '@/components/layout/Section'
 import { Chip } from '@/components/ui/Chip'
@@ -6,6 +6,7 @@ import { StatusDot } from '@/components/ui/StatusDot'
 import { education } from '@/content/education'
 import { KIND_LABEL, timeline, type TimelineEntry } from '@/content/timeline'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { useScrollProgress } from '@/hooks/useScrollProgress'
 import { cn } from '@/lib/cn'
 import { formatMonth } from '@/lib/dates'
 
@@ -60,13 +61,10 @@ function Node({
     <m.span
       aria-hidden="true"
       style={reduced ? {} : { opacity: on, scale }}
-      className={cn(
-        'grid size-5 place-items-center rounded-full border-2 bg-canvas',
-        entry.current ? 'border-signal' : 'border-fg',
-      )}
+      className={cn('grid size-5 place-items-center rounded-full border-2 bg-canvas', 'border-fg')}
     >
       <span
-        className={cn('size-1.5 rounded-full', entry.current ? 'animate-blink bg-signal' : 'bg-fg')}
+        className={cn('size-1.5 rounded-full', entry.current ? 'animate-blink bg-fg' : 'bg-fg')}
       />
     </m.span>
   )
@@ -78,7 +76,7 @@ function EntryText({ entry, index }: { entry: TimelineEntry; index: number }) {
       <p className="flex flex-wrap items-center gap-2">
         {entry.current ? (
           <Chip variant="signal">
-            <StatusDot pulse /> current
+            <StatusDot tone="signal" pulse /> Active
           </Chip>
         ) : (
           <Chip>{KIND_LABEL[entry.kind]}</Chip>
@@ -98,7 +96,7 @@ function EntryText({ entry, index }: { entry: TimelineEntry; index: number }) {
 function Trace() {
   const ref = useRef<HTMLDivElement>(null)
   const reduced = usePrefersReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.85', 'end 0.6'] })
+  const scrollYProgress = useScrollProgress(ref, { start: 0.85, end: 0.6 })
   const drawn = useTransform(scrollYProgress, [0, 1], [0, 1])
   const pathStyle = reduced ? {} : { pathLength: drawn }
   const phoneHeight = count * 168
@@ -191,21 +189,29 @@ function Trace() {
 
 function Groundwork() {
   return (
-    <div className="mt-20 grid gap-10 border-t border-line pt-10 lg:mt-28 lg:grid-cols-12 lg:gap-12">
-      <div className="lg:col-span-5">
-        <p className="label text-fg-subtle">Groundwork</p>
-        <h3 className="mt-3 font-display text-2xl leading-tight font-bold tracking-tight text-fg md:text-3xl">
-          {education.degree}
-        </h3>
-        <p className="mt-2 text-fg-muted">
-          {education.school} · {education.location}
-        </p>
-        <p className="mt-1 label text-fg-subtle">
-          {formatMonth(education.start)} → {formatMonth(education.end)} · {education.result}
-        </p>
-        <p className="mt-4 text-sm leading-relaxed text-fg-muted">{education.summary}</p>
+    // Same anatomy as a section header (mono label, big two-tone title, caption on the right), one
+    // step smaller, so the degree reads as its own chapter rather than a footnote to the trace.
+    <div className="mt-24 reveal border-t border-line pt-14 md:mt-36 md:pt-20">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] md:items-end md:gap-12">
+        <div>
+          <p className="label text-fg-subtle">
+            Education <span aria-hidden="true">·</span> {formatMonth(education.start)} →{' '}
+            {formatMonth(education.end)}
+          </p>
+          <h3 className="mt-4 font-display text-[clamp(2.25rem,5.5vw,4.25rem)] leading-[0.95] font-bold tracking-[-0.035em] text-balance text-fg">
+            The <em className="text-fg-subtle not-italic">groundwork.</em>
+          </h3>
+        </div>
+        <div className="text-sm leading-relaxed text-pretty text-fg-muted md:pb-2">
+          <p className="text-fg">{education.degree}</p>
+          <p className="mt-1">
+            {education.school} · {education.location}
+          </p>
+          <p className="mt-1 label text-fg-subtle">{education.result}</p>
+        </div>
       </div>
-      <ol className="grid gap-x-8 sm:grid-cols-2 lg:col-span-7">
+      <p className="mt-8 max-w-2xl text-pretty text-fg-muted md:mt-10">{education.summary}</p>
+      <ol className="mt-10 grid gap-x-8 sm:grid-cols-2 md:mt-14 lg:grid-cols-4">
         {education.coursework.map((course, i) => (
           <li key={course.name} className="border-b border-line py-4">
             <p className="flex items-baseline gap-3">

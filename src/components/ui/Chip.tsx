@@ -6,7 +6,7 @@ export type ChipVariant = 'neutral' | 'signal' | Severity
 
 const variantClasses: Record<ChipVariant, string> = {
   neutral: 'border-line-strong text-fg-muted',
-  signal: 'border-signal/35 bg-signal-wash text-signal',
+  signal: 'border-fg/30 bg-raised text-fg',
   critical: 'border-sev-critical/35 bg-sev-critical/10 text-sev-critical',
   high: 'border-sev-high/35 bg-sev-high/10 text-sev-high',
   medium: 'border-sev-medium/35 bg-sev-medium/10 text-sev-medium',

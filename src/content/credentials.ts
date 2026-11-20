@@ -12,6 +12,8 @@ export type Credential = {
   /** `YYYY-MM-DD` dates from the issuer's verification page. */
   issued?: string
   expires?: string
+  /** One line on what the credential actually covers. */
+  focus?: string
   /** Official badge, self-hosted under /public/badges (the CSP blocks third-party images). */
   badge?: { src: string; alt: string }
 }
@@ -20,6 +22,7 @@ export const credentials: Credential[] = [
   {
     code: 'SC-200',
     name: 'Microsoft Certified: Security Operations Analyst Associate',
+    focus: 'Investigating and responding with Microsoft Sentinel, Defender XDR and KQL.',
     issuer: 'Microsoft',
     year: 2026,
     featured: true,
@@ -32,6 +35,7 @@ export const credentials: Credential[] = [
   {
     code: 'eJPTv2',
     name: 'Junior Penetration Tester',
+    focus: 'A hands-on exam: enumeration, exploitation and pivoting across a lab network.',
     issuer: 'INE Security',
     year: 2026,
     featured: true,
@@ -44,6 +48,7 @@ export const credentials: Credential[] = [
   {
     code: 'eSOC',
     name: 'Security Operations Certified, Level 1',
+    focus: 'Alert triage, log analysis and incident handling in a SOC workflow.',
     issuer: 'INE Security',
     year: 2026,
     featured: true,

@@ -24,16 +24,16 @@ export function CredentialsSection() {
       }
       intro="Certifications that back the day-to-day work, from the SOC side and the offensive side."
     >
-      <ul className="grid gap-4 md:grid-cols-3">
+      <ul className="grid min-w-0 gap-4 md:grid-cols-3">
         {featured.map((credential, i) => {
           const active = credential.expires ? credential.expires >= today : true
           return (
-            <li key={credential.code}>
+            <li key={credential.code} className="min-w-0">
               <article
                 onPointerMove={trackSpotlight}
                 className="group spotlight flex h-full flex-col rounded-md border border-line bg-surface transition-colors hover:border-line-strong"
               >
-                <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 label text-fg-subtle">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-line px-5 py-3 label text-fg-subtle">
                   <span>
                     EVD-{pad(i + 1)} · {credential.issuer}
                   </span>
@@ -41,7 +41,7 @@ export function CredentialsSection() {
                     <span
                       className={cn(
                         'inline-flex items-center gap-1.5',
-                        active ? 'text-signal' : 'text-fg-subtle',
+                        active ? 'text-fg-muted' : 'text-fg-subtle',
                       )}
                     >
                       <StatusDot tone={active ? 'signal' : 'subtle'} pulse={active} />
@@ -54,7 +54,7 @@ export function CredentialsSection() {
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-start justify-between gap-4">
-                    <h3 className="pt-3 font-display text-5xl leading-none text-fg transition-colors group-hover:text-signal-strong">
+                    <h3 className="pt-3 font-display text-4xl leading-none text-fg transition-colors group-hover:text-fg-muted min-[22.5rem]:text-5xl">
                       {credential.code}
                     </h3>
                     {credential.badge ? (
@@ -65,11 +65,16 @@ export function CredentialsSection() {
                         height={80}
                         loading="lazy"
                         decoding="async"
-                        className="size-20 shrink-0 object-contain transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3"
+                        className="size-14 shrink-0 object-contain transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3 min-[22.5rem]:size-20"
                       />
                     ) : null}
                   </div>
                   <p className="mt-4 text-sm leading-relaxed text-fg-muted">{credential.name}</p>
+                  {credential.focus ? (
+                    <p className="mt-2 text-sm leading-relaxed text-fg-subtle">
+                      {credential.focus}
+                    </p>
+                  ) : null}
 
                   {credential.issued ? (
                     <dl className="mt-auto grid grid-cols-2 gap-x-4 gap-y-3 pt-6 label">
@@ -104,7 +109,7 @@ export function CredentialsSection() {
                     href={credential.verifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 label text-fg-muted transition-colors hover:bg-raised hover:text-signal"
+                    className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 label text-fg-muted transition-colors hover:bg-raised hover:text-fg"
                   >
                     <span className="truncate">
                       Verify

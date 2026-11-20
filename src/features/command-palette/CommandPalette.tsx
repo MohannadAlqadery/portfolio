@@ -90,7 +90,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
       contentClassName="fixed inset-x-4 top-[max(12vh,calc(env(safe-area-inset-top)+1rem))] z-50 mx-auto max-w-lg origin-top overflow-hidden rounded-md border border-line-strong bg-surface shadow-2xl shadow-black/60 will-change-[transform,opacity] data-[state=closed]:animate-panel-out data-[state=open]:animate-panel-in sm:inset-x-0"
     >
       <div className="flex items-center gap-3 border-b border-line px-4">
-        <span aria-hidden="true" className="font-mono text-sm text-signal">
+        <span aria-hidden="true" className="font-mono text-sm text-fg-subtle">
           &gt;
         </span>
         <Command.Input
@@ -198,7 +198,7 @@ export default function CommandPalette({ open, onOpenChange }: CommandPalettePro
       </Command.List>
 
       <div className="flex items-center justify-between gap-4 border-t border-line px-4 py-2.5 label text-fg-subtle">
-        <output aria-live="polite" className="truncate text-signal">
+        <output aria-live="polite" className="truncate text-fg">
           {status}
         </output>
         <span className="flex shrink-0 items-center gap-1.5">

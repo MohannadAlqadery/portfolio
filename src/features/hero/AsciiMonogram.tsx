@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { StatusDot } from '@/components/ui/StatusDot'
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
 import { cn } from '@/lib/cn'
@@ -15,8 +15,14 @@ import {
 } from './monogram'
 
 // Monospace cells are ~0.6em wide; these make the grid fill a 4:5 card exactly.
-const FONT_SIZE = `calc(100cqw / ${(GRID_COLS * 0.6).toFixed(1)})`
+// The grid is set at a normal 16px (so it never reads as illegible tiny text) and then scaled to
+// the card's width. Monospace cells are ~0.6em wide; the line height fills a 4:5 card exactly.
+const BASE_PX = 16
+const GRID_W = GRID_COLS * 0.6 * BASE_PX
 const LINE_HEIGHT = ((1.25 * GRID_COLS * 0.6) / GRID_ROWS).toFixed(3)
+
+// Runs before paint in the browser (no flash at the wrong size); a plain effect on the server.
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 const LAYER_CLASS: Record<Cell, string> = {
   [Cell.Background]: 'text-fg-subtle/45',
@@ -33,6 +39,18 @@ export function AsciiMonogram({ className, seed = 7 }: { className?: string; see
   const cells = useMemo(() => buildCells(), [])
   const settled = useMemo(() => buildGlyphs(cells, createRandom(seed)), [cells, seed])
   const reducedMotion = usePrefersReducedMotion()
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0)
+
+  useIsomorphicLayoutEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    const update = () => setScale(card.clientWidth / GRID_W)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [])
   const [glyphs, setGlyphs] = useState(settled)
 
   useEffect(() => {
@@ -44,9 +62,17 @@ export function AsciiMonogram({ className, seed = 7 }: { className?: string; see
     // Each row settles at its own time: a scan from top to bottom with some jitter.
     const rowAt = settled.map((_, y) => 120 + (y / GRID_ROWS) * 900 + random() * 260)
 
+    let lastSwap = -Infinity
     const decrypt = (now: number) => {
       start ??= now
       const elapsed = now - start
+      // Re-roll the noise every ~50 ms rather than every frame, so the scramble looks the same
+      // at 60, 120 or 144 Hz (and does less work on fast screens).
+      if (elapsed - lastSwap < 50) {
+        frame = requestAnimationFrame(decrypt)
+        return
+      }
+      lastSwap = elapsed
       let done = true
       setGlyphs(
         settled.map((row, y) => {
@@ -86,25 +112,31 @@ export function AsciiMonogram({ className, seed = 7 }: { className?: string; see
 
   return (
     <div
+      ref={cardRef}
       className={cn(
         '@container relative aspect-[4/5] overflow-hidden rounded-lg border border-line-strong bg-raised shadow-2xl shadow-black/40',
         className,
       )}
     >
       <span className="sr-only">The initials MA drawn in ASCII characters</span>
-      {([Cell.Background, Cell.Edge, Cell.Letter] as const).map((kind) => (
-        <pre
-          key={kind}
-          aria-hidden="true"
-          className={cn(
-            'absolute inset-0 m-0 overflow-hidden font-mono font-medium select-none',
-            LAYER_CLASS[kind],
-          )}
-          style={{ fontSize: FONT_SIZE, lineHeight: LINE_HEIGHT }}
-        >
-          {layers[kind]}
-        </pre>
-      ))}
+      <div
+        aria-hidden="true"
+        className="absolute top-0 left-0 origin-top-left"
+        style={{ width: GRID_W, height: GRID_W * 1.25, transform: `scale(${scale})` }}
+      >
+        {([Cell.Background, Cell.Edge, Cell.Letter] as const).map((kind) => (
+          <pre
+            key={kind}
+            className={cn(
+              'absolute inset-0 m-0 overflow-hidden font-mono font-medium select-none',
+              LAYER_CLASS[kind],
+            )}
+            style={{ fontSize: BASE_PX, lineHeight: LINE_HEIGHT }}
+          >
+            {layers[kind]}
+          </pre>
+        ))}
+      </div>
 
       {/* A soft band sweeping down the card, like a scanner. */}
       <div

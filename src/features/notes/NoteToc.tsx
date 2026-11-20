@@ -36,7 +36,7 @@ export function TocSidebar({ toc, activeId }: TocProps) {
                 className={cn(
                   '-ml-px block border-l py-1.5 pl-4 text-sm leading-snug transition-colors',
                   active
-                    ? 'border-signal text-fg'
+                    ? 'border-fg text-fg'
                     : 'border-transparent text-fg-subtle hover:text-fg-muted',
                 )}
               >

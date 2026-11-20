@@ -13,6 +13,7 @@ export const profile = {
     { field: 'Training', value: 'HTB CDSA path · AWS Academy · Cisco NetAcad' },
     { field: 'Next', value: 'Advanced SOC · Incident response' },
     { field: 'Background', value: 'Compliance and QA · 2 years' },
+    { field: 'Study', value: 'B.Sc. Cybersecurity and Cloud Computing · 2026' },
     { field: 'Languages', value: 'Arabic · English (both native)' },
   ],
 } as const
