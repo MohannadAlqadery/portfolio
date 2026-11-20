@@ -41,7 +41,7 @@ export function CredentialsSection() {
                     <span
                       className={cn(
                         'inline-flex items-center gap-1.5',
-                        active ? 'text-signal' : 'text-fg-subtle',
+                        active ? 'text-fg-muted' : 'text-fg-subtle',
                       )}
                     >
                       <StatusDot tone={active ? 'signal' : 'subtle'} pulse={active} />
@@ -54,7 +54,7 @@ export function CredentialsSection() {
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="flex items-start justify-between gap-4">
-                    <h3 className="pt-3 font-display text-5xl leading-none text-fg transition-colors group-hover:text-signal-strong">
+                    <h3 className="pt-3 font-display text-5xl leading-none text-fg transition-colors group-hover:text-fg-muted">
                       {credential.code}
                     </h3>
                     {credential.badge ? (
@@ -104,7 +104,7 @@ export function CredentialsSection() {
                     href={credential.verifyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 label text-fg-muted transition-colors hover:bg-raised hover:text-signal"
+                    className="flex items-center justify-between gap-3 border-t border-line px-5 py-3 label text-fg-muted transition-colors hover:bg-raised hover:text-fg"
                   >
                     <span className="truncate">
                       Verify

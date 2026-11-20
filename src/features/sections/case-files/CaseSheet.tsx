@@ -44,7 +44,7 @@ export function CaseSheet({ file, currentMonth }: { file: CaseFile; currentMonth
         <ol className="mt-6 space-y-4">
           {file.actions.map((action, i) => (
             <li key={action} className="grid grid-cols-[2rem_1fr] gap-2 text-fg-muted">
-              <span className="pt-1 label text-signal">{pad(i + 1)}</span>
+              <span className="pt-1 label text-fg-subtle">{pad(i + 1)}</span>
               <span className="leading-relaxed">{action}</span>
             </li>
           ))}

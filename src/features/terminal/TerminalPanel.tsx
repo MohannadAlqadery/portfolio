@@ -13,7 +13,7 @@ type Entry = { id: number; input?: string; lines: Line[] }
 const TONE: Record<NonNullable<Line['tone']>, string> = {
   plain: 'text-fg',
   muted: 'text-fg-subtle',
-  signal: 'text-signal',
+  signal: 'font-semibold text-fg',
   warn: 'text-sev-medium',
 }
 
@@ -128,7 +128,7 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
     >
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <p id={titleId} className="font-mono text-xs text-fg-muted">
-          <span className="text-signal">mohannad@soc</span>:~${' '}
+          <span className="text-fg">mohannad@soc</span>:~${' '}
           <span className="text-fg-subtle">ask</span>
         </p>
         <button
@@ -152,7 +152,7 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
           <div key={entry.id}>
             {entry.input !== undefined ? (
               <p className="text-fg">
-                <span aria-hidden="true" className="mr-2 text-signal">
+                <span aria-hidden="true" className="mr-2 text-fg-subtle">
                   ›
                 </span>
                 {entry.input}
@@ -190,7 +190,7 @@ export default function TerminalPanel({ id, onClose }: { id: string; onClose: ()
       ) : null}
 
       <form onSubmit={onSubmit} className="flex items-center gap-2 border-t border-line px-4 py-3">
-        <span aria-hidden="true" className="font-mono text-sm text-signal">
+        <span aria-hidden="true" className="font-mono text-sm text-fg-subtle">
           ›
         </span>
         <label htmlFor={`${id}-input`} className="sr-only">

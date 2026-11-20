@@ -87,11 +87,7 @@ export function SiteFooter() {
                   <button
                     type="button"
                     onClick={() => void onCopyEmail()}
-                    className={cn(
-                      linkClass,
-                      'inline-flex items-center gap-2',
-                      copied && 'text-signal',
-                    )}
+                    className={cn(linkClass, 'inline-flex items-center gap-2', copied && 'text-fg')}
                   >
                     {copied ? 'Copied' : 'Copy email'}
                     {copied ? (

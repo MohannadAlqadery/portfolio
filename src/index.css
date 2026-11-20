@@ -350,7 +350,7 @@
     border-radius: inherit;
     background: radial-gradient(
       22rem circle at var(--spot-x, 50%) var(--spot-y, 50%),
-      color-mix(in srgb, var(--color-signal) 9%, transparent),
+      color-mix(in srgb, var(--color-fg) 5%, transparent),
       transparent 70%
     );
     opacity: 0;
@@ -425,7 +425,7 @@
 :root {
   --shiki-foreground: var(--color-fg-muted);
   --shiki-background: transparent;
-  --shiki-token-keyword: var(--color-signal);
+  --shiki-token-keyword: var(--color-fg);
   --shiki-token-string: var(--color-sev-medium);
   --shiki-token-string-expression: var(--color-sev-medium);
   --shiki-token-comment: var(--color-fg-subtle);
@@ -433,7 +433,7 @@
   --shiki-token-function: var(--color-fg);
   --shiki-token-parameter: var(--color-fg);
   --shiki-token-punctuation: var(--color-fg-subtle);
-  --shiki-token-link: var(--color-signal);
+  --shiki-token-link: var(--color-fg);
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -485,12 +485,12 @@
   }
 
   ::selection {
-    background-color: var(--color-signal);
+    background-color: var(--color-fg);
     color: var(--color-canvas);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-signal);
+    outline: 2px solid var(--color-fg);
     outline-offset: 3px;
     border-radius: 2px;
   }

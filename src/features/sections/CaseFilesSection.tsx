@@ -87,7 +87,7 @@ export function CaseFilesSection() {
                 <span className="truncate">
                   {file.org.replace(/ LLC$/, '')} · {file.classification}
                 </span>
-                <span className={cn('shrink-0', file.status === 'active' && 'text-signal')}>
+                <span className={cn('shrink-0', file.status === 'active' && 'text-fg')}>
                   {file.end ? formatMonth(file.end).slice(-4) : 'now'}
                 </span>
               </FolderCaption>

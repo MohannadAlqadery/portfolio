@@ -92,7 +92,7 @@ export function SiteHeader() {
           aria-hidden="true"
           data-testid="reading-progress"
           className={cn(
-            'pointer-events-none fixed top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-signal',
+            'pointer-events-none fixed top-[env(safe-area-inset-top)] z-50 h-0.5 scroll-progress bg-fg',
             HOLD_STILL,
           )}
         />

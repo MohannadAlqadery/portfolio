@@ -60,10 +60,7 @@ function Node({
     <m.span
       aria-hidden="true"
       style={reduced ? {} : { opacity: on, scale }}
-      className={cn(
-        'grid size-5 place-items-center rounded-full border-2 bg-canvas',
-        entry.current ? 'border-signal' : 'border-fg',
-      )}
+      className={cn('grid size-5 place-items-center rounded-full border-2 bg-canvas', 'border-fg')}
     >
       <span
         className={cn('size-1.5 rounded-full', entry.current ? 'animate-blink bg-signal' : 'bg-fg')}

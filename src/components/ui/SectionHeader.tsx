@@ -41,7 +41,7 @@ export function SectionHeader({
     >
       <div>
         <p className="label text-fg-subtle">
-          <span className="text-signal">{pad(index)}</span>
+          <span className="text-fg-muted">{pad(index)}</span>
           <span aria-hidden="true"> / {pad(total)}</span>
           <span className="sr-only"> of {total}</span>
           <span aria-hidden="true"> · </span>

@@ -62,11 +62,11 @@ export function CodeBlock({
           className="inline-flex items-center gap-1.5 transition-colors hover:text-fg"
         >
           {copied ? (
-            <Check aria-hidden="true" className="size-3 text-signal" />
+            <Check aria-hidden="true" className="size-3 text-fg" />
           ) : (
             <Copy aria-hidden="true" className="size-3" />
           )}
-          <span className={copied ? 'text-signal' : undefined}>{copied ? 'Copied' : 'Copy'}</span>
+          <span className={copied ? 'text-fg' : undefined}>{copied ? 'Copied' : 'Copy'}</span>
         </button>
       </div>
       <pre
@@ -87,9 +87,9 @@ export function Takeaways({ children }: { children?: ReactNode }) {
   return (
     <aside
       aria-label="Key takeaways"
-      className="my-8 rounded-md border border-signal/30 bg-signal-wash/50 px-5 pt-4 pb-1 [&_ul]:my-3"
+      className="my-8 rounded-md border border-line-strong bg-raised px-5 pt-4 pb-1 [&_ul]:my-3"
     >
-      <p className="label text-signal">Key takeaways</p>
+      <p className="label text-fg-muted">Key takeaways</p>
       {children}
     </aside>
   )

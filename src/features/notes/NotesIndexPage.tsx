@@ -39,7 +39,7 @@ export default function NotesIndexPage() {
           className={cn(
             'h-7 rounded-sm border px-2.5 label transition-colors',
             tag === null
-              ? 'border-signal/40 bg-signal-wash text-signal'
+              ? 'border-fg bg-fg text-canvas'
               : 'border-line text-fg-subtle hover:text-fg',
           )}
         >
@@ -54,7 +54,7 @@ export default function NotesIndexPage() {
             className={cn(
               'h-7 rounded-sm border px-2.5 label transition-colors',
               tag === name
-                ? 'border-signal/40 bg-signal-wash text-signal'
+                ? 'border-fg bg-fg text-canvas'
                 : 'border-line text-fg-subtle hover:text-fg',
             )}
           >
@@ -75,7 +75,7 @@ export default function NotesIndexPage() {
                 <span className="block">{note.readingMinutes} min read</span>
               </span>
               <span className="md:col-span-9">
-                <span className="block font-display text-3xl leading-tight text-fg transition-colors group-hover:text-signal-strong md:text-4xl">
+                <span className="block font-display text-3xl leading-tight text-fg transition-colors group-hover:text-fg-muted md:text-4xl">
                   {note.title}
                 </span>
                 <span className="mt-3 block max-w-2xl leading-relaxed text-fg-muted">
@@ -89,7 +89,7 @@ export default function NotesIndexPage() {
               </span>
               <span
                 aria-hidden="true"
-                className="hidden size-9 place-items-center justify-self-end rounded-sm border border-line text-fg-subtle transition-colors group-hover:border-signal/50 group-hover:text-signal md:col-span-1 md:grid"
+                className="hidden size-9 place-items-center justify-self-end rounded-sm border border-line text-fg-subtle transition-colors group-hover:border-fg-subtle group-hover:text-fg md:col-span-1 md:grid"
               >
                 <ArrowUpRight className="size-4" />
               </span>

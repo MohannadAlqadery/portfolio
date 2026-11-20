@@ -85,9 +85,7 @@ export function NavMenu({
                   aria-current={active ? 'location' : undefined}
                   className={linkClass}
                 >
-                  <span
-                    className={cn('w-5 shrink-0 label', active ? 'text-signal' : 'text-fg-subtle')}
-                  >
+                  <span className={cn('w-5 shrink-0 label', active ? 'text-fg' : 'text-fg-subtle')}>
                     {pad(i + 1)}
                   </span>
                   <span
@@ -110,7 +108,7 @@ export function NavMenu({
               className={linkClass}
             >
               <span
-                className={cn('w-5 shrink-0 label', notesActive ? 'text-signal' : 'text-fg-subtle')}
+                className={cn('w-5 shrink-0 label', notesActive ? 'text-fg' : 'text-fg-subtle')}
               >
                 ✎
               </span>
