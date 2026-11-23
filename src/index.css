@@ -550,14 +550,6 @@
     scroll-behavior: auto;
   }
 
-  /*
-   * Menus and dialogs lock scrolling themselves (and compensate for the scrollbar). Lenis's own
-   * overflow: clip while stopped would reflow the page and shift the scroll position on close.
-   */
-  html.lenis.lenis-stopped:not(.lenis-autoToggle) {
-    overflow: visible;
-  }
-
   :root[data-theme='light'] {
     color-scheme: light;
   }
@@ -574,4 +566,15 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/*
+ * Menus and dialogs lock scrolling themselves (and compensate for the scrollbar). Lenis's own
+ * overflow: clip while stopped stops the body's lock from reaching the viewport, so <body> turns
+ * into the scroll container: the page jumps on close, and sticky scenes (the hero's "Hi, I'm
+ * Mohannad.") are measured against <body> and slide out of view while the palette is open.
+ * Unlayered on purpose: lenis.css is unlayered too, and would otherwise win over any @layer rule.
+ */
+html.lenis.lenis-stopped:not(.lenis-autoToggle) {
+  overflow: visible;
 }
