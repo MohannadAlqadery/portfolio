@@ -3,7 +3,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { LocalClock } from '@/components/layout/LocalClock'
-import { DecryptText } from '@/components/motion/DecryptText'
+import { CipherReveal } from '@/components/motion/CipherReveal'
 import { Section } from '@/components/layout/Section'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { site } from '@/content/site'
@@ -17,11 +17,11 @@ const TOPICS = [
   'Something else',
 ] as const
 
-/** Glyphs for decrypting an email address: lower case, so it settles without a case flip. */
-const EMAIL_GLYPHS = 'abcdefghijklmnopqrstuvwxyz0123456789#$%&*+=?'
-/** How long the address takes to decrypt, and when it becomes plain, selectable text (ms). */
-const DECRYPT_MS = 900
-const SETTLE_MS = 1150
+/** How long the address takes to decrypt, and how long "Decrypted" stays before the actions (ms). */
+const DECRYPT_MS = 1300
+const CONFIRM_MS = 520
+const EASE_OUT = [0.16, 1, 0.3, 1] as const
+const EASE_IN = [0.55, 0, 0.75, 0.25] as const
 
 const fieldClass =
   'w-full border-0 border-b border-line-strong bg-transparent px-0 py-3 text-fg transition-colors placeholder:text-fg-subtle focus:border-fg focus:outline-none focus-visible:outline-none'
@@ -48,15 +48,23 @@ function Field({
 /** Left column: the address (revealed on request), LinkedIn and local time. */
 function Channels() {
   const [email, setEmail] = useState<string | null>(null)
-  // While false, the address is still decrypting; then it becomes plain text you can select.
-  const [settled, setSettled] = useState(false)
+  /**
+   * hidden → decrypting (ciphertext resolves, a readout counts up) → decrypted (a short
+   * confirmation) → done (plain, selectable text and the Copy / Write actions).
+   */
+  const [phase, setPhase] = useState<'hidden' | 'decrypting' | 'decrypted' | 'done'>('hidden')
+  const [progress, setProgress] = useState(0)
   const [copied, setCopied] = useState(false)
-  const settleTimer = useRef(0)
-  useEffect(() => () => window.clearTimeout(settleTimer.current), [])
+  const confirmTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(confirmTimer.current), [])
 
   const reveal = () => {
     setEmail(getEmail())
-    settleTimer.current = window.setTimeout(() => setSettled(true), SETTLE_MS)
+    setPhase('decrypting')
+  }
+  const onDecrypted = () => {
+    setPhase((current) => (current === 'decrypting' ? 'decrypted' : current))
+    confirmTimer.current = window.setTimeout(() => setPhase('done'), CONFIRM_MS)
   }
 
   const onCopy = async () => {
@@ -73,11 +81,15 @@ function Channels() {
       <div>
         <p className="label text-fg-subtle">Email</p>
         <p className="mt-3 font-display text-2xl font-semibold tracking-tight break-all text-fg md:text-3xl">
-          {email && settled ? (
+          {email && phase === 'done' ? (
             <span className="select-all">{email}</span>
           ) : email ? (
-            // Same decrypt as the headlines: glyphs cycle and lock in, left to right.
-            <DecryptText text={email} duration={DECRYPT_MS} glyphs={EMAIL_GLYPHS} />
+            <CipherReveal
+              text={email}
+              duration={DECRYPT_MS}
+              onProgress={setProgress}
+              onDone={onDecrypted}
+            />
           ) : (
             <span className="text-fg-subtle">
               <span aria-hidden="true">••••••••</span>@gmail.com
@@ -87,13 +99,42 @@ function Channels() {
         </p>
         <div className="mt-4 flex min-h-9 flex-wrap gap-2">
           <AnimatePresence mode="wait" initial={false}>
-            {email ? (
+            {email && (phase === 'decrypting' || phase === 'decrypted') ? (
+              // A readout while the address decrypts: label, percentage and a hairline bar.
+              <m.div
+                key="status"
+                data-decrypt-status
+                className="flex h-9 items-center gap-3 label text-fg-subtle"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4, filter: 'blur(3px)' }}
+                transition={{ duration: 0.28, ease: EASE_OUT }}
+              >
+                <span
+                  className={cn(
+                    'transition-colors duration-300',
+                    phase === 'decrypted' && 'text-fg',
+                  )}
+                >
+                  {phase === 'decrypted' ? 'Decrypted' : 'Decrypting'}
+                </span>
+                <span className="w-[4ch] text-right tabular-nums">
+                  {Math.round((phase === 'decrypted' ? 1 : progress) * 100)}%
+                </span>
+                <span className="relative h-px w-24 overflow-hidden bg-line-strong">
+                  <span
+                    className="absolute inset-0 origin-left bg-fg transition-transform duration-150 ease-out"
+                    style={{ transform: `scaleX(${phase === 'decrypted' ? 1 : progress})` }}
+                  />
+                </span>
+              </m.div>
+            ) : email ? (
               <m.div
                 key="actions"
                 className="flex flex-wrap gap-2"
                 initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+                transition={{ duration: 0.4, ease: EASE_OUT }}
               >
                 <Button size="sm" onClick={() => void onCopy()}>
                   {copied ? (
@@ -112,7 +153,7 @@ function Channels() {
               <m.div
                 key="reveal"
                 exit={{ opacity: 0, y: -4, filter: 'blur(4px)' }}
-                transition={{ duration: 0.2, ease: [0.55, 0, 0.75, 0.25] }}
+                transition={{ duration: 0.2, ease: EASE_IN }}
               >
                 <Button size="sm" onClick={reveal}>
                   <Eye aria-hidden="true" className="size-3.5" />

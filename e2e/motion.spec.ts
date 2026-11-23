@@ -191,3 +191,30 @@ test.describe('open and close motion', () => {
     await expect.poll(drawn).toBeGreaterThan(0.95)
   })
 })
+
+test('the hero intro stays in place behind the open palette', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'Ctrl K is a keyboard shortcut')
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  // A plain element lookup: the page behind an open dialog is aria-hidden, so roles would miss it.
+  const heading = page.locator('h2', { hasText: 'Hi, I’m' })
+  // Scroll into the sticky intro scene, where "Hi, I'm Mohannad." is on screen.
+  for (let y = 0; y <= 1200; y += 200) {
+    await page.evaluate((v) => window.scrollTo(0, v), y)
+    await page.waitForTimeout(40)
+  }
+  await expect(heading).toBeInViewport()
+  const top = () => heading.evaluate((el) => Math.round(el.getBoundingClientRect().top))
+  await expect.poll(top).toBeGreaterThan(0)
+  const before = await top()
+
+  await page.keyboard.press('Control+k')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  // While the page is locked the scene must not move (it used to slide off by the scroll offset).
+  expect(Math.abs((await top()) - before)).toBeLessThan(2)
+  await expect(heading).toBeInViewport()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(Math.abs((await top()) - before)).toBeLessThan(2)
+})

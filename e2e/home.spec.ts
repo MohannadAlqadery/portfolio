@@ -79,12 +79,16 @@ test.describe('home page', () => {
     await page.goto('/')
     const contact = page.locator('#contact')
     await contact.getByRole('button', { name: 'Reveal address' }).click()
-    // Glyphs cycle first (the visible copy is not the address yet)...
-    const visible = contact.locator('[data-decrypt]')
-    await expect(visible).toBeVisible()
-    expect(await visible.textContent()).not.toBe('mohannadalqadery@gmail.com')
-    // ...then it settles into plain, selectable text.
+    // Ciphertext first, with a readout counting up while the key sweeps across...
+    await expect(contact.locator('[data-decrypt]')).toBeVisible()
+    const status = contact.locator('[data-decrypt-status]')
+    await expect(status).toContainText('Decrypting')
+    // ...then a short confirmation...
+    await expect(status).toContainText('Decrypted')
+    await expect(status).toContainText('100%')
+    // ...then plain, selectable text and the actions, with the readout gone.
     await expect(contact.locator('.select-all')).toHaveText('mohannadalqadery@gmail.com')
+    await expect(status).toHaveCount(0)
     await expect(contact.getByRole('link', { name: 'Write' })).toBeVisible()
   })
 
