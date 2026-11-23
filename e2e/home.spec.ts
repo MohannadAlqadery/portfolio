@@ -74,6 +74,20 @@ test.describe('home page', () => {
     await expect(page.getByText(/Draft handed to your mail app/)).toBeVisible()
   })
 
+  test('revealing the email decrypts it into place, then leaves plain text', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'no-preference' })
+    await page.goto('/')
+    const contact = page.locator('#contact')
+    await contact.getByRole('button', { name: 'Reveal address' }).click()
+    // Glyphs cycle first (the visible copy is not the address yet)...
+    const visible = contact.locator('[data-decrypt]')
+    await expect(visible).toBeVisible()
+    expect(await visible.textContent()).not.toBe('mohannadalqadery@gmail.com')
+    // ...then it settles into plain, selectable text.
+    await expect(contact.locator('.select-all')).toHaveText('mohannadalqadery@gmail.com')
+    await expect(contact.getByRole('link', { name: 'Write' })).toBeVisible()
+  })
+
   test('contact email stays hidden until revealed', async ({ page }) => {
     await page.goto('/')
     const html = await page.content()

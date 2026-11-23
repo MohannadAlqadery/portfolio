@@ -267,3 +267,27 @@ describe('city watch: easing', () => {
     }
   })
 })
+
+describe('city watch: cameras', () => {
+  it('mounts cameras on the CCTV front (instead of a sign) and over access doors', () => {
+    const city = buildCity(8)
+    const cctv = city.storefronts.findIndex((f) => f.kind === 'asset' && f.asset === 'CCTV')
+    expect(cctv).toBeGreaterThanOrEqual(0)
+    expect(city.cameras.filter((c) => c.front === cctv)).toHaveLength(2)
+    const access = city.storefronts.filter((f) => f.kind === 'access').length
+    expect(city.cameras.filter((c) => c.size < 1)).toHaveLength(access)
+  })
+
+  it('keeps every camera on its own building, facing into the street', () => {
+    const city = buildCity(6)
+    for (const cam of city.cameras) {
+      const front = city.storefronts[cam.front]
+      const tower = front ? city.towers[front.tower] : undefined
+      expect(tower).toBeDefined()
+      expect(cam.x).toBeGreaterThanOrEqual(tower?.x ?? Infinity)
+      expect(cam.x).toBeLessThanOrEqual((tower?.x ?? 0) + (tower?.w ?? 0))
+      expect(cam.y).toBeLessThan(GROUND)
+      expect([1, -1]).toContain(cam.dir)
+    }
+  })
+})

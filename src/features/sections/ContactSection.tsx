@@ -1,7 +1,9 @@
 import { ArrowUpRight, Check, Copy, Eye, Mail } from 'lucide-react'
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import { AnimatePresence, m } from 'motion/react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { LinkedinIcon } from '@/components/icons/BrandIcons'
 import { LocalClock } from '@/components/layout/LocalClock'
+import { DecryptText } from '@/components/motion/DecryptText'
 import { Section } from '@/components/layout/Section'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { site } from '@/content/site'
@@ -14,6 +16,12 @@ const TOPICS = [
   'Just saying hello',
   'Something else',
 ] as const
+
+/** Glyphs for decrypting an email address: lower case, so it settles without a case flip. */
+const EMAIL_GLYPHS = 'abcdefghijklmnopqrstuvwxyz0123456789#$%&*+=?'
+/** How long the address takes to decrypt, and when it becomes plain, selectable text (ms). */
+const DECRYPT_MS = 900
+const SETTLE_MS = 1150
 
 const fieldClass =
   'w-full border-0 border-b border-line-strong bg-transparent px-0 py-3 text-fg transition-colors placeholder:text-fg-subtle focus:border-fg focus:outline-none focus-visible:outline-none'
@@ -40,7 +48,16 @@ function Field({
 /** Left column: the address (revealed on request), LinkedIn and local time. */
 function Channels() {
   const [email, setEmail] = useState<string | null>(null)
+  // While false, the address is still decrypting; then it becomes plain text you can select.
+  const [settled, setSettled] = useState(false)
   const [copied, setCopied] = useState(false)
+  const settleTimer = useRef(0)
+  useEffect(() => () => window.clearTimeout(settleTimer.current), [])
+
+  const reveal = () => {
+    setEmail(getEmail())
+    settleTimer.current = window.setTimeout(() => setSettled(true), SETTLE_MS)
+  }
 
   const onCopy = async () => {
     const address = email ?? getEmail()
@@ -56,8 +73,11 @@ function Channels() {
       <div>
         <p className="label text-fg-subtle">Email</p>
         <p className="mt-3 font-display text-2xl font-semibold tracking-tight break-all text-fg md:text-3xl">
-          {email ? (
+          {email && settled ? (
             <span className="select-all">{email}</span>
+          ) : email ? (
+            // Same decrypt as the headlines: glyphs cycle and lock in, left to right.
+            <DecryptText text={email} duration={DECRYPT_MS} glyphs={EMAIL_GLYPHS} />
           ) : (
             <span className="text-fg-subtle">
               <span aria-hidden="true">••••••••</span>@gmail.com
@@ -65,28 +85,42 @@ function Channels() {
             </span>
           )}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {email ? (
-            <>
-              <Button size="sm" onClick={() => void onCopy()}>
-                {copied ? (
-                  <Check aria-hidden="true" className="size-3.5" />
-                ) : (
-                  <Copy aria-hidden="true" className="size-3.5" />
-                )}
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-              <ButtonLink size="sm" href={`mailto:${email}`} variant="solid">
-                <Mail aria-hidden="true" className="size-3.5" />
-                Write
-              </ButtonLink>
-            </>
-          ) : (
-            <Button size="sm" onClick={() => setEmail(getEmail())}>
-              <Eye aria-hidden="true" className="size-3.5" />
-              Reveal address
-            </Button>
-          )}
+        <div className="mt-4 flex min-h-9 flex-wrap gap-2">
+          <AnimatePresence mode="wait" initial={false}>
+            {email ? (
+              <m.div
+                key="actions"
+                className="flex flex-wrap gap-2"
+                initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.25 }}
+              >
+                <Button size="sm" onClick={() => void onCopy()}>
+                  {copied ? (
+                    <Check aria-hidden="true" className="size-3.5" />
+                  ) : (
+                    <Copy aria-hidden="true" className="size-3.5" />
+                  )}
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+                <ButtonLink size="sm" href={`mailto:${email}`} variant="solid">
+                  <Mail aria-hidden="true" className="size-3.5" />
+                  Write
+                </ButtonLink>
+              </m.div>
+            ) : (
+              <m.div
+                key="reveal"
+                exit={{ opacity: 0, y: -4, filter: 'blur(4px)' }}
+                transition={{ duration: 0.2, ease: [0.55, 0, 0.75, 0.25] }}
+              >
+                <Button size="sm" onClick={reveal}>
+                  <Eye aria-hidden="true" className="size-3.5" />
+                  Reveal address
+                </Button>
+              </m.div>
+            )}
+          </AnimatePresence>
         </div>
         <output aria-live="polite" className="sr-only">
           {copied ? 'Email address copied to clipboard' : ''}
